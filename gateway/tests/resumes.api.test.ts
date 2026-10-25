@@ -214,3 +214,78 @@ describe("suggestions proxy", () => {
     expect(res.body.error.code).toBe("feature_unavailable");
   });
 });
+
+describe("ATS analysis", () => {
+  const JD = "We are hiring a Python engineer with SQL, Kubernetes and Terraform experience to build APIs. ".repeat(2);
+  const mlReply = {
+    score: 64, cosine: 0.6412, matched: ["Python", "SQL"], missing: ["Kubernetes", "Terraform"],
+    explanation: "Decent overlap.", explanation_source: "template", model: "all-MiniLM-L6-v2",
+    truncated_resume: false, truncated_job: false,
+  };
+
+  function mockMl(reply: unknown = mlReply, status = 200) {
+    const real = globalThis.fetch;
+    return vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) =>
+      String(input).startsWith("http://ml.invalid") ? new Response(JSON.stringify(reply), { status }) : real(input, init),
+    );
+  }
+  async function resumeWith(agent: ReturnType<typeof request.agent>, c: unknown = content) {
+    return (await agent.post("/api/v1/resumes").send({ title: "CV", content: c })).body.resume.id as string;
+  }
+
+  it("scores via the ML service, stores the evidence, and sends only text + secret", async () => {
+    const a = await signedIn("a@example.com");
+    const id = await resumeWith(a);
+    const spy = mockMl();
+    const res = await a.post(`/api/v1/resumes/${id}/analyze`).send({ jobDescription: JD });
+    expect(res.status).toBe(200);
+    expect(res.body.analysis).toMatchObject({ score: 64, matched: ["Python", "SQL"], missing: ["Kubernetes", "Terraform"], explanationSource: "template" });
+
+    const call = spy.mock.calls.find((c) => String(c[0]).includes("ml.invalid"))!;
+    expect(String(call[0])).toBe("http://ml.invalid/score");
+    const sent = JSON.parse(call[1]!.body as string);
+    expect(Object.keys(sent).sort()).toEqual(["job_description", "resume_text"]);
+    expect(sent.resume_text).toContain("Ada Lovelace");
+    expect(sent.resume_text).toContain("TypeScript");
+    expect((call[1]!.headers as Record<string, string>)["x-ml-secret"]).toBe("shh");
+
+    const stored = (await a.get(`/api/v1/resumes/${id}`)).body.resume.ats;
+    expect(stored.score).toBe(64);
+    expect(stored.missing).toEqual(["Kubernetes", "Terraform"]);
+    expect((await a.get("/api/v1/resumes")).body.resumes[0].atsScore).toBe(64);
+  });
+
+  it("clears the stored analysis when the resume content changes", async () => {
+    const a = await signedIn("a@example.com");
+    const id = await resumeWith(a);
+    mockMl();
+    await a.post(`/api/v1/resumes/${id}/analyze`).send({ jobDescription: JD });
+    await a.put(`/api/v1/resumes/${id}`).send({ content: { ...content, skills: ["Rust"] } });
+    expect((await a.get(`/api/v1/resumes/${id}`)).body.resume.ats).toBeNull();
+  });
+
+  it("validates input, rejects empty resumes, and isolates users", async () => {
+    const a = await signedIn("a@example.com");
+    const b = await signedIn("b@example.com");
+    const id = await resumeWith(a);
+    mockMl();
+    expect((await a.post(`/api/v1/resumes/${id}/analyze`).send({ jobDescription: "too short" })).status).toBe(400);
+    expect((await a.post(`/api/v1/resumes/${id}/analyze`).send({})).status).toBe(400);
+    expect((await b.post(`/api/v1/resumes/${id}/analyze`).send({ jobDescription: JD })).status).toBe(404);
+    const emptyId = await resumeWith(a, {});
+    const empty = await a.post(`/api/v1/resumes/${emptyId}/analyze`).send({ jobDescription: JD });
+    expect(empty.status).toBe(400);
+    expect(empty.body.error.message).toMatch(/Add some content/);
+  });
+
+  it("maps ML failures and malformed ML responses to 502/503 without storing anything", async () => {
+    const a = await signedIn("a@example.com");
+    const id = await resumeWith(a);
+    mockMl({ detail: "Embedding model is unavailable" }, 503);
+    expect((await a.post(`/api/v1/resumes/${id}/analyze`).send({ jobDescription: JD })).status).toBe(503);
+    vi.restoreAllMocks();
+    mockMl({ score: "high" });
+    expect((await a.post(`/api/v1/resumes/${id}/analyze`).send({ jobDescription: JD })).status).toBe(502);
+    expect((await a.get(`/api/v1/resumes/${id}`)).body.resume.ats).toBeNull();
+  });
+});

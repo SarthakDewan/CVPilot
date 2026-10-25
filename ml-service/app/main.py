@@ -1,6 +1,6 @@
 """CVPilot ML service.
 
-Phase 2: /health and /suggest. /score, /rank, /screen, /aggregate and
+Phase 3: /health, /suggest and /score. /score, /rank, /screen, /aggregate and
 /roadmap are added in later phases. Every route except /health requires the
 shared-secret header.
 """
@@ -12,7 +12,7 @@ from typing import Literal
 from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
-from . import gemini, suggest as suggest_mod
+from . import ats as ats_mod, gemini, suggest as suggest_mod
 
 SECRET_HEADER = "x-ml-secret"
 
@@ -49,3 +49,29 @@ def suggest(req: SuggestRequest) -> dict[str, list[str]]:
         raise HTTPException(status_code=503, detail="Phrasing suggestions are unavailable: Gemini is not configured")
     except gemini.GeminiError:
         raise HTTPException(status_code=502, detail="Gemini request failed")
+
+
+class ScoreRequest(BaseModel):
+    resume_text: str = Field(min_length=20, max_length=30000)
+    job_description: str = Field(min_length=20, max_length=30000)
+
+
+class ScoreResponse(BaseModel):
+    score: int
+    cosine: float
+    matched: list[str]
+    missing: list[str]
+    explanation: str
+    explanation_source: Literal["gemini", "template"]
+    model: str
+    truncated_resume: bool
+    truncated_job: bool
+
+
+@app.post("/score", response_model=ScoreResponse, dependencies=[Depends(require_secret)])
+def score(req: ScoreRequest) -> ScoreResponse:
+    try:
+        result = ats_mod.analyze(req.resume_text, req.job_description)
+    except (ImportError, OSError) as exc:  # model could not be loaded/downloaded
+        raise HTTPException(status_code=503, detail="Embedding model is unavailable") from exc
+    return ScoreResponse(**result.__dict__)

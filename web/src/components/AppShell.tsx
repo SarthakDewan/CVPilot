@@ -7,7 +7,7 @@ interface NavItem { to: string; label: string; icon: ComponentType<{ className?:
 const NAV: NavItem[] = [
   { to: "/", label: "Dashboard", icon: HomeIcon },
   { to: "/resumes", label: "Resumes", icon: FileIcon },
-  { to: "/ats", label: "ATS Score", icon: TargetIcon, phase: 3 },
+  { to: "/ats", label: "ATS Score", icon: TargetIcon },
   { to: "/jobs", label: "Job Matches", icon: BriefcaseIcon, phase: 4 },
   { to: "/scam-radar", label: "Scam Radar", icon: ShieldIcon, phase: 4 },
   { to: "/insights", label: "Market Insights", icon: ChartIcon, phase: 6 },

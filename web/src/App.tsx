@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthPage } from "./pages/AuthPages";
+import AtsPage from "./pages/AtsPage";
 import Builder from "./pages/Builder";
 import Dashboard from "./pages/Dashboard";
 import PublicResume from "./pages/PublicResume";
@@ -16,6 +17,7 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/ats" element={<AtsPage />} />
           <Route path="/resumes" element={<ResumesPage />} />
           <Route path="/resumes/new" element={<NewResumePage />} />
           <Route path="/resumes/:id" element={<Builder />} />

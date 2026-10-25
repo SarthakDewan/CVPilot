@@ -8,8 +8,12 @@ import { parseBody } from "../middleware/validate.js";
 import { Resume, type ResumeDoc } from "../models/Resume.js";
 import { exportFileName, renderDocx, renderPdf } from "../services/exporters.js";
 import { mlPost } from "../services/mlClient.js";
+import { createHash } from "node:crypto";
 import {
+  analyzeSchema,
   createResumeSchema,
+  mlScoreSchema,
+  resumeToText,
   resumeContentSchema,
   shareSchema,
   suggestSchema,
@@ -21,6 +25,22 @@ import { TEMPLATES } from "../services/templates.js";
 
 type ResumeLike = HydratedDocument<ResumeDoc>;
 
+function serializeAts(a: ResumeLike["ats"]) {
+  if (!a || a.score === undefined || a.score === null) return null;
+  return {
+    score: a.score,
+    matched: a.matchedKeywords ?? [],
+    missing: a.missingKeywords ?? [],
+    explanation: a.explanation ?? "",
+    explanationSource: a.explanationSource ?? "template",
+    cosine: a.cosine ?? null,
+    model: a.model ?? null,
+    truncatedResume: a.truncatedResume ?? false,
+    truncatedJob: a.truncatedJob ?? false,
+    analyzedAt: a.analyzedAt ?? null,
+  };
+}
+
 function serialize(r: ResumeLike) {
   const expiresAt = r.share?.expiresAt ?? null;
   return {
@@ -28,7 +48,7 @@ function serialize(r: ResumeLike) {
     title: r.title,
     templateId: r.templateId,
     content: r.content,
-    ats: r.ats ?? null,
+    ats: serializeAts(r.ats),
     shared: Boolean(r.share?.tokenHash),
     shareExpiresAt: expiresAt,
     createdAt: r.createdAt,
@@ -82,6 +102,37 @@ export function resumesRouter(cfg: Config): Router {
     const body = parseBody(suggestSchema, req);
     const out = await mlPost<{ suggestions: string[] }>(cfg, "/suggest", body);
     res.json({ suggestions: out.suggestions });
+  });
+
+  router.post("/:id/analyze", analysisLimiter(cfg), async (req, res) => {
+    const resume = await ownedResume(req);
+    const { jobDescription } = parseBody(analyzeSchema, req);
+    const resumeText = resumeToText(resumeContentSchema.parse(resume.content ?? {}));
+    if (resumeText.length < 20) {
+      throw AppError.badRequest("Add some content to this resume (summary, skills or experience) before analyzing it");
+    }
+    // The ML service embeds both texts locally; Gemini only ever sees the score and keyword lists.
+    const parsed = mlScoreSchema.safeParse(
+      await mlPost(cfg, "/score", { resume_text: resumeText, job_description: jobDescription }, 90_000),
+    );
+    if (!parsed.success) throw new AppError(502, "ml_error", "The analysis service returned an unexpected response");
+    const r = parsed.data;
+    const analyzedAt = new Date();
+    resume.set("ats", {
+      score: r.score,
+      matchedKeywords: r.matched,
+      missingKeywords: r.missing,
+      explanation: r.explanation,
+      explanationSource: r.explanation_source,
+      cosine: r.cosine,
+      model: r.model,
+      truncatedResume: r.truncated_resume,
+      truncatedJob: r.truncated_job,
+      jobDescriptionHash: createHash("sha256").update(jobDescription).digest("hex"),
+      analyzedAt,
+    });
+    await resume.save();
+    res.json({ analysis: serializeAts(resume.ats) });
   });
 
   router.get("/:id", async (req, res) => {

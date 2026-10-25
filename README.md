@@ -3,9 +3,8 @@
 Candidate-facing career intelligence: resume builder, semantic ATS analyzer, job matching, market insights,
 skill-gap roadmap and scam detection, linked in one data flow.
 
-> **Status: Phase 2 of 7** — auth, resume builder (3 templates, live preview, autosave, PDF/DOCX export, revocable
-> share links, optional Gemini phrasing help). ATS scoring, job matching, scam detection, insights and roadmap are
-> **not built yet**; those sidebar items are marked "Soon". The dashboard shows only your real data.
+> **Status: Phase 3 of 7** — auth, resume builder (3 templates, live preview, PDF/DOCX export, share links), and the
+> semantic ATS analyzer. Job matching, scam detection, insights and roadmap are **not built yet**; those sidebar items are marked "Soon". The dashboard shows only your real data.
 
 ## Architecture
 
@@ -81,13 +80,37 @@ Getting keys (needed later): Gemini — https://aistudio.google.com/apikey; Adzu
   user clicks "Improve wording" on is sent. Without `GEMINI_API_KEY` the UI shows "Gemini is not configured".
 - Editing a resume clears any stored ATS result, because it would be stale.
 
+## ATS analyzer (Phase 3)
+
+`POST /api/v1/resumes/:id/analyze { jobDescription }` -> gateway builds plain text from the resume -> ML `POST /score`:
+
+1. `e_R`, `e_J` = sentence-transformers embeddings (default `all-MiniLM-L6-v2`, set `EMBEDDING_MODEL` to change).
+2. `MatchScore = round(100 * max(0, cosine(e_R, e_J)))`.
+3. Keyword sets: lowercase, strip punctuation, drop stop words and tokens < 3 characters, lemmatize (`simplemma` plus
+   a plural-folding step so "API"/"APIs" match). `M = W_R ∩ W_J`, `Γ = W_J \ W_R`, ordered by frequency in the job description.
+4. Only `(score, M, Γ)` go to Gemini (temperature 0.1) for a short explanation; if Gemini is missing or fails, a
+   deterministic template is used. The UI shows which one produced the text.
+
+The result (score, matched, missing, explanation, model, raw cosine) is stored on the resume and cleared when the resume
+is edited. The job description itself is not stored, only its hash.
+
+Documented deviations / caveats in `ml-service/app/keywords.py`: a small allow-list of short technical terms
+(`c++`, `c#`, `ai`, `ml`, `ui`, `ux`, `qa`, `ci/cd`, `.net`, `node.js`) is kept even though the spec drops tokens under
+3 characters, and job-ad boilerplate (`GENERIC_TERMS`, e.g. "experience", "team", "familiarity") is removed from both
+sets. Keywords are single words; multi-word skills ("machine learning") appear as separate words.
+
 ## Known limitations / assumptions
 
 - No refresh token: sessions end after the access-token lifetime and the user signs in again.
 - CSRF defence relies on `SameSite` cookies, the strict CORS allow-list and JSON-only bodies; no CSRF token.
 - Rate limiting is in-memory per process; use a shared store if the gateway is scaled out.
 - Resume sharing stores only a SHA-256 hash of the share token.
-- `ml-service` currently exposes `/health`, `/internal/ping` and `/suggest`.
+- `ml-service` currently exposes `/health`, `/internal/ping`, `/suggest` and `/score`.
+- MiniLM reads only the first ~256 tokens of each text. Longer resumes/job descriptions are truncated for the *score*
+  (the UI warns when this happens); the keyword lists use the full text.
+- The score measures semantic similarity, not a probability of passing a real employer's ATS.
+- The first `/score` call after the ML service starts loads the model (about 8 s on the test machine); later calls took
+  about 1.5 s. The Docker image downloads the model at build time. On Python 3.11 in Docker this is untested here.
 - The share URL cannot be shown again after creation (only a hash is stored); users create a new link instead.
 - The in-browser preview and the PDF/DOCX exports are separate renderers kept visually close but not pixel-identical;
   DOCX output was checked for valid file structure only, not opened in Word.

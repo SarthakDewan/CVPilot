@@ -87,6 +87,22 @@ export const shareSchema = z.object({
   expiresInDays: z.number().int().min(1).max(365).optional(),
 });
 
+export const analyzeSchema = z.object({
+  jobDescription: z.string().trim().min(50, "Paste the full job description (at least 50 characters)").max(20000),
+});
+
+export const mlScoreSchema = z.object({
+  score: z.number().int().min(0).max(100),
+  cosine: z.number(),
+  matched: z.array(z.string()),
+  missing: z.array(z.string()),
+  explanation: z.string(),
+  explanation_source: z.enum(["gemini", "template"]),
+  model: z.string(),
+  truncated_resume: z.boolean(),
+  truncated_job: z.boolean(),
+});
+
 export const suggestSchema = z.object({
   kind: z.enum(["bullet", "summary"]),
   text: z.string().trim().min(10).max(1200),

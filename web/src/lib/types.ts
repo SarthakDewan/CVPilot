@@ -17,11 +17,25 @@ export interface ResumeContent {
   certifications: Certification[];
 }
 
+export interface AtsAnalysis {
+  score: number;
+  matched: string[];
+  missing: string[];
+  explanation: string;
+  explanationSource: "gemini" | "template";
+  cosine: number | null;
+  model: string | null;
+  truncatedResume: boolean;
+  truncatedJob: boolean;
+  analyzedAt: string | null;
+}
+
 export interface ResumeFull {
   id: string;
   title: string;
   templateId: TemplateId;
   content: ResumeContent;
+  ats: AtsAnalysis | null;
   shared: boolean;
   shareExpiresAt: string | null;
   updatedAt: string;

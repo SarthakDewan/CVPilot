@@ -8,7 +8,6 @@ import type { ResumeSummary } from "../lib/types";
 import { timeAgo } from "../lib/time";
 
 const UPCOMING = [
-  ["ATS Score", "Semantic resume-to-job match with matched and missing keywords.", 3],
   ["Job Matches & Scam Radar", "Ranked live listings, each with a scam-risk band and reasons.", 4],
   ["Market Insights & Skill Roadmap", "Skill demand and salary stats, and a learning plan for your gaps.", 6],
 ] as const;
@@ -25,6 +24,7 @@ export default function Dashboard() {
   const stats = [
     { label: "Resumes", value: resumes?.length },
     { label: "Shared links active", value: resumes?.filter((r) => r.shared).length },
+    { label: "Best ATS score", value: resumes ? (resumes.some((r) => r.atsScore !== null) ? Math.max(...resumes.map((r) => r.atsScore ?? 0)) : "–") : undefined },
     { label: "Templates used", value: resumes ? new Set(resumes.map((r) => r.templateId)).size : undefined },
   ];
 
@@ -33,13 +33,13 @@ export default function Dashboard() {
       <header className="animate-fade-up rounded-2xl bg-gradient-to-br from-brand-600 via-brand-700 to-violet-700 p-6 text-white shadow-lg sm:p-8">
         <p className="text-sm text-brand-100">Welcome back</p>
         <h1 className="mt-1 text-2xl font-extrabold sm:text-3xl">Hi, {name} 👋</h1>
-        <p className="mt-2 max-w-xl text-sm text-brand-100">Build your resume now; ATS scoring, job matching and market insights unlock in the next releases.</p>
+        <p className="mt-2 max-w-xl text-sm text-brand-100">Build your resume now; Check it against a job description on the ATS Score page; job matching and market insights are coming next.</p>
         <Link to="/resumes/new" className="mt-5 inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-brand-700 shadow transition hover:-translate-y-0.5 hover:shadow-lg">
           <PlusIcon className="h-4 w-4" /> New resume
         </Link>
       </header>
 
-      <section className="mt-6 grid gap-4 sm:grid-cols-3" aria-label="Your stats">
+      <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Your stats">
         {stats.map((s, i) => (
           <Card key={s.label} className="animate-fade-up p-5 transition hover:-translate-y-0.5 hover:shadow-md" >
             <div style={{ animationDelay: `${i * 70}ms` }}>
@@ -69,7 +69,7 @@ export default function Dashboard() {
 
       <section className="mt-8">
         <h2 className="text-lg font-bold">Coming next</h2>
-        <div className="mt-3 grid gap-4 sm:grid-cols-3">
+        <div className="mt-3 grid gap-4 sm:grid-cols-2">
           {UPCOMING.map(([t, d, p]) => (
             <Card key={t} className="p-5"><Badge tone="amber">Phase {p}</Badge><h3 className="mt-2 font-bold">{t}</h3><p className="mt-1 text-sm text-slate-600">{d}</p></Card>
           ))}

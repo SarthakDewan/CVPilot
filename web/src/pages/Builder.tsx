@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Bullets, Repeater, SuggestButton, TagInput } from "../components/editors";
-import { CheckIcon, DownloadIcon, LinkIcon, PlusIcon, TrashIcon } from "../components/icons";
+import { CheckIcon, DownloadIcon, LinkIcon, PlusIcon, TargetIcon, TrashIcon } from "../components/icons";
 import { ResumePreview, ScaledPage } from "../components/ResumePreview";
 import { Badge, Button, Card, Field, Skeleton, TextArea } from "../components/ui";
 import { api, ApiError } from "../lib/api";
@@ -88,6 +88,7 @@ export default function Builder() {
           <span className={`h-2 w-2 rounded-full ${{ saved: "bg-emerald-500", unsaved: "bg-amber-400", saving: "animate-pulse bg-brand-500", error: "bg-rose-500" }[save]}`} />{saveLabel}
         </button>
         <div className="flex gap-2">
+          <Link to={`/ats?resume=${id}`}><Button variant="secondary"><TargetIcon className="h-4 w-4" /> ATS check</Button></Link>
           <Button variant="secondary" onClick={() => void download("pdf")}><DownloadIcon className="h-4 w-4" /> PDF</Button>
           <Button variant="secondary" onClick={() => void download("docx")}><DownloadIcon className="h-4 w-4" /> DOCX</Button>
         </div>
