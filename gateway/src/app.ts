@@ -6,6 +6,8 @@ import type { Config } from "./config.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.js";
 import { authRouter } from "./routes/auth.js";
 import { profileRouter } from "./routes/profile.js";
+import { publicResumesRouter } from "./routes/publicResumes.js";
+import { resumesRouter } from "./routes/resumes.js";
 
 export function createApp(cfg: Config): Express {
   const app = express();
@@ -31,6 +33,8 @@ export function createApp(cfg: Config): Express {
   const api = express.Router();
   api.use("/auth", authRouter(cfg));
   api.use("/profile", profileRouter(cfg));
+  api.use("/resumes", resumesRouter(cfg));
+  api.use("/public/resumes", publicResumesRouter(cfg));
   app.use("/api/v1", api);
 
   app.use(notFoundHandler);

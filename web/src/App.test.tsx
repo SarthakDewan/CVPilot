@@ -52,6 +52,7 @@ describe("auth UI", () => {
     mockFetch((url) => {
       if (url.endsWith("/auth/me")) return { status: 401, body: { error: { code: "unauthorized", message: "x" } } };
       if (url.endsWith("/auth/register")) return { status: 201, body: { user: { id: "1", email: "a@b.co" } } };
+      if (url.endsWith("/resumes")) return { status: 200, body: { resumes: [] } };
       return { status: 404 };
     });
     renderAt("/register");
@@ -59,7 +60,7 @@ describe("auth UI", () => {
     await user.type(await screen.findByLabelText("Email"), "a@b.co");
     await user.type(screen.getByLabelText("Password"), "a-long-password");
     await user.click(screen.getByRole("button", { name: "Create account" }));
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument());
-    expect(screen.getByText("a@b.co")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("heading", { name: /Hi, a/ })).toBeInTheDocument());
+    expect(await screen.findByText(/no resumes yet/i)).toBeInTheDocument();
   });
 });

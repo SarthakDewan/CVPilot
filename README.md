@@ -3,8 +3,9 @@
 Candidate-facing career intelligence: resume builder, semantic ATS analyzer, job matching, market insights,
 skill-gap roadmap and scam detection, linked in one data flow.
 
-> **Status: Phase 1 of 7** — scaffold, database models, and authentication. Resume builder, ATS, job matching,
-> scam detection, insights and roadmap are **not built yet**. The dashboard shows only your account.
+> **Status: Phase 2 of 7** — auth, resume builder (3 templates, live preview, autosave, PDF/DOCX export, revocable
+> share links, optional Gemini phrasing help). ATS scoring, job matching, scam detection, insights and roadmap are
+> **not built yet**; those sidebar items are marked "Soon". The dashboard shows only your real data.
 
 ## Architecture
 
@@ -68,10 +69,26 @@ Getting keys (needed later): Gemini — https://aistudio.google.com/apikey; Adzu
 - Rate limit on login/register (20 per 15 min per IP); strict CORS allow-list; helmet.
 - API is versioned under `/api/v1`: `POST /auth/register|login|logout`, `GET /auth/me`, `GET|PUT /profile`.
 
-## Known limitations / assumptions (Phase 1)
+## Resume builder (Phase 2)
+
+- Resumes: `GET|POST /resumes`, `GET|PUT|DELETE /resumes/:id`, `GET /resumes/templates`. Max 25 per user. Every
+  lookup is scoped to the signed-in user; other users' ids return 404.
+- Export: `GET /resumes/:id/export?format=pdf|docx` (pdfkit / docx), styled per template.
+- Sharing: `POST /resumes/:id/share` (optional `expiresInDays`) returns a 256-bit token **once**; only its SHA-256 is
+  stored. Creating a new link replaces the old one. `DELETE /resumes/:id/share` revokes. The public read-only view is
+  `GET /public/resumes/:token` (rate-limited, `noindex`, exposes only title, template and content).
+- Phrasing suggestions: `POST /resumes/suggest` -> gateway -> ML service `/suggest` -> Gemini. Only the one snippet the
+  user clicks "Improve wording" on is sent. Without `GEMINI_API_KEY` the UI shows "Gemini is not configured".
+- Editing a resume clears any stored ATS result, because it would be stale.
+
+## Known limitations / assumptions
 
 - No refresh token: sessions end after the access-token lifetime and the user signs in again.
 - CSRF defence relies on `SameSite` cookies, the strict CORS allow-list and JSON-only bodies; no CSRF token.
 - Rate limiting is in-memory per process; use a shared store if the gateway is scaled out.
-- Resume sharing stores only a SHA-256 hash of the share token (the schema is ready; the feature arrives in Phase 2).
-- `ml-service` currently exposes only `/health` and `/internal/ping`.
+- Resume sharing stores only a SHA-256 hash of the share token.
+- `ml-service` currently exposes `/health`, `/internal/ping` and `/suggest`.
+- The share URL cannot be shown again after creation (only a hash is stored); users create a new link instead.
+- The in-browser preview and the PDF/DOCX exports are separate renderers kept visually close but not pixel-identical;
+  DOCX output was checked for valid file structure only, not opened in Word.
+- Gemini suggestions were tested with the Gemini client mocked and with the key absent; no live Gemini call was made.
