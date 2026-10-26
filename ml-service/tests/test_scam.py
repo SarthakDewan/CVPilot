@@ -1,7 +1,6 @@
 import json
 
 import pytest
-
 from app import scam
 
 S = scam.Settings(theta1=0.25, theta2=0.5, w_r=0.5)
@@ -81,6 +80,18 @@ class TestFusionAndBands:
         risk, mode = scam.fuse(0.5, 0.9, scam.Settings(w_r=0.4))
         assert mode == "hybrid" and risk == pytest.approx(0.4 * 0.5 + 0.6 * 0.9)
 
+    def test_rule_floor_keeps_rule_evidence_from_being_diluted(self):
+        no_floor = scam.Settings(w_r=0.0, rule_floor=False)
+        assert scam.fuse(0.5, 0.0, no_floor) == (0.0, "hybrid")
+        assert scam.fuse(0.5, 0.0, scam.Settings(w_r=0.0, rule_floor=True)) == (0.5, "hybrid")
+        # the floor never lowers a risk
+        assert scam.fuse(0.0, 0.8, scam.Settings(w_r=0.5, rule_floor=True))[0] == pytest.approx(0.4)
+
+    def test_floor_can_be_disabled_from_env(self, monkeypatch):
+        monkeypatch.setenv("SCAM_RULE_FLOOR", "0")
+        monkeypatch.setenv("SCAM_SETTINGS_PATH", "/nonexistent.json")
+        assert scam.Settings.from_env().rule_floor is False
+
     def test_rule_only_fallback_when_no_classifier(self):
         risk, mode = scam.fuse(0.75, None, S)
         assert (risk, mode) == (0.75, "rule-only")
@@ -120,6 +131,28 @@ class TestDataDrivenRules:
         path.write_text(json.dumps(data))
         with pytest.raises(ValueError):
             scam.rule_score("anything at all here", scam.load_rules(path))
+
+
+def test_tuned_settings_file_is_used_only_with_a_model(monkeypatch, tmp_path):
+    settings = tmp_path / "scam_settings.json"
+    settings.write_text(json.dumps({"theta1": 0.1, "theta2": 0.4, "w_r": 0.2}))
+    monkeypatch.setenv("SCAM_SETTINGS_PATH", str(settings))
+    for v in ("SCAM_THETA1", "SCAM_THETA2", "SCAM_W_R"):
+        monkeypatch.delenv(v, raising=False)
+
+    monkeypatch.setenv("SCAM_MODEL_PATH", str(tmp_path / "missing.joblib"))
+    scam.reset_caches()
+    assert scam.Settings.from_env().theta2 == 0.5  # no model -> defaults, tuned values ignored
+
+    model = tmp_path / "m.joblib"
+    model.write_bytes(b"x")
+    monkeypatch.setenv("SCAM_MODEL_PATH", str(model))
+    monkeypatch.setattr(scam, "get_classifier", lambda: object())
+    s = scam.Settings.from_env()
+    assert (s.theta1, s.theta2, s.w_r) == (0.1, 0.4, 0.2)
+    monkeypatch.setenv("SCAM_THETA2", "0.7")
+    assert scam.Settings.from_env().theta2 == 0.7  # env still wins
+    scam.reset_caches()
 
 
 def test_classifier_loader_returns_none_without_model_file(monkeypatch, tmp_path):

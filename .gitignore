@@ -11,3 +11,5 @@ __pycache__/
 eval/data/
 .DS_Store
 *.tsbuildinfo
+ml-service/models/*
+!ml-service/models/.gitkeep

@@ -1,6 +1,5 @@
 import httpx
 import pytest
-
 from app import adzuna
 
 PAYLOAD = {
@@ -38,7 +37,7 @@ def test_parses_results_and_defaults_to_india():
     assert seen["url"] == "https://api.adzuna.com/v1/api/jobs/in/search/1"
     assert seen["q"]["what"] == "python developer" and seen["q"]["where"] == "Bengaluru"
     assert seen["q"]["results_per_page"] == "20" and seen["q"]["app_id"] == "id123"
-    assert [l.source_id for l in out] == ["4001", "4002"]
+    assert [lst.source_id for lst in out] == ["4001", "4002"]
     a, b = out
     assert (a.company, a.location, a.salary_min, a.salary_max, a.salary_predicted, a.currency) == (
         "Acme Tech", "Bengaluru, Karnataka", 600000.0, 900000.0, True, "INR")

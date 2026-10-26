@@ -67,7 +67,7 @@ export function jobsRouter(cfg: Config): Router {
                 description: r.description,
                 url: safeUrl(r.url),
                 salary: { min: r.salary_min ?? undefined, max: r.salary_max ?? undefined, currency: r.currency || undefined },
-                requiredSkills: r.keywords,
+                requiredSkills: r.skills,
                 scamRisk: { band: r.scam.band, score: r.scam.risk, reasons: r.scam.fired.map((f) => f.reason), mode: r.scam.mode },
                 fetchedAt: now,
               },

@@ -20,7 +20,7 @@ const screening = (band: "safe" | "caution" | "high", fired: string[] = []) => (
 const mlJob = (id: string, over: object = {}) => ({
   source_id: id, title: `Job ${id}`, company: "Acme", location: "Pune", description: "Build APIs", url: "https://adzuna.in/ad/" + id,
   salary_min: 500000, salary_max: 800000, salary_predicted: false, currency: "INR", score: 71, cosine: 0.71,
-  matched_terms: ["Python"], keywords: ["python", "api"], scam: screening("safe"), ...over,
+  matched_terms: ["Python"], keywords: ["python", "api"], skills: ["Python", "REST APIs"], scam: screening("safe"), ...over,
 });
 
 const resumeContent = { basics: { fullName: "Ada" }, summary: "Backend developer who builds APIs.", skills: ["Python", "Django"] };
@@ -89,7 +89,7 @@ describe("job search", () => {
     expect(stored).toHaveLength(2);
     expect(stored[1]?.scamRisk?.band).toBe("high");
     expect(stored[1]?.scamRisk?.reasons).toEqual(["Reason h1", "Reason h3"]);
-    expect(stored[0]?.requiredSkills).toEqual(["python", "api"]);
+    expect(stored[0]?.requiredSkills).toEqual(["Python", "REST APIs"]);
   });
 
   it("re-running a search upserts instead of duplicating listings", async () => {

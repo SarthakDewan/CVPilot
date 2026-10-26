@@ -1,142 +1,255 @@
 # CVPilot
 
-Candidate-facing career intelligence: resume builder, semantic ATS analyzer, job matching, market insights,
-skill-gap roadmap and scam detection, linked in one data flow.
+A candidate-facing career-intelligence app. Six capabilities share one data flow:
 
-> **Status: Phase 4 of 7** — auth, resume builder, semantic ATS analyzer, job matching (Adzuna) and rule-based scam
-> screening. The trained scam classifier (Phase 5), market insights, roadmap and settings are **not built yet**; those sidebar items are marked "Soon". The dashboard shows only your real data.
+1. **Resume builder**: structured form, 3 templates, live preview, PDF/DOCX export, revocable share links.
+2. **Semantic ATS analyzer**: embedding similarity plus matched/missing keywords, with an explanation.
+3. **Job matching**: live Adzuna listings ranked against your resume, each screened for scams.
+4. **Market intelligence**: skill demand and salary statistics per role/location.
+5. **Skill-gap roadmap**: the in-demand skills your resume lacks, with milestone tracking.
+6. **Scam detection**: data-driven rules plus a trained text classifier, with the evidence shown.
+
+Skills in your resume feed matching; fetched listings feed market aggregation; aggregated demand feeds the roadmap.
+Every score, label or explanation in the UI shows its evidence (matched/missing keywords, fired indicators with the quoted
+text, demand counts).
+
+**Status: all 7 build phases are implemented.** See [Testing](#testing-what-was-and-was-not-run) for exactly what was
+run and what was not. Deployment guidance is in [DEPLOYMENT.md](DEPLOYMENT.md); evaluation tooling in [eval/](eval/README.md).
 
 ## Architecture
 
 ```
-browser ──► web (React/Vite) ──/api──► gateway (Express) ──shared secret──► ml-service (FastAPI)
-                                            │                                   │
-                                         MongoDB                       Gemini, Adzuna (later phases)
+browser ──► web (React + Vite, nginx) ──/api──► gateway (Node/Express) ──x-ml-secret──► ml-service (FastAPI)
+                                                     │                                      │
+                                                  MongoDB                    sentence-transformers, scikit-learn,
+                                                                             pandas · calls Gemini + Adzuna
 ```
 
-The browser only ever talks to the gateway. API keys live in server-side env vars.
+* The browser talks **only** to the gateway. The gateway handles auth, CRUD, sharing and orchestration.
+* The ML service is the **only** component that calls Gemini or Adzuna; all API keys are server-side environment variables.
+* Gateway ⇄ ML service use an internal REST contract protected by a shared-secret header (constant-time comparison).
 
-## Run with Docker
+| Folder | What |
+| --- | --- |
+| `web/` | React 19 + TypeScript (Vite), Tailwind 4, React Router |
+| `gateway/` | Express 5 + TypeScript (strict), Mongoose, zod, JWT cookie sessions |
+| `ml-service/` | FastAPI, sentence-transformers, scikit-learn, pandas, simplemma |
+| `eval/` | Training and evaluation scripts (no fabricated numbers) |
+
+## Quick start (Docker)
 
 ```bash
 cp .env.example .env
-# put two random secrets in .env (JWT_SECRET, ML_SHARED_SECRET):
+# Put two different random secrets in .env (JWT_SECRET, ML_SHARED_SECRET):
 node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+# Add ADZUNA_APP_ID / ADZUNA_APP_KEY (and optionally GEMINI_API_KEY) to .env
 docker compose up --build
 ```
 
-Open http://localhost:8080 (web). Gateway health: http://localhost:4000/health.
+Open <http://localhost:8080>, register, then check **Settings → Service status** to see which integrations are on.
+(A labelled demo account can be created with `npm run seed`; see the next section.)
 
-## Run without Docker (development)
+### Getting API keys
+
+* **Adzuna** (job data, free tier): create an app at <https://developer.adzuna.com/> and copy the *Application ID* and
+  *Application Key* into `ADZUNA_APP_ID` / `ADZUNA_APP_KEY`. `ADZUNA_COUNTRY` defaults to `in`.
+* **Gemini** (optional text generation): create a key at <https://aistudio.google.com/apikey> and set `GEMINI_API_KEY`.
+  Without it, explanations and roadmap tips fall back to deterministic text, and "Improve wording" is unavailable.
+* **EMSCAD dataset** (only to train the scam classifier): see [eval/README.md](eval/README.md).
+
+Job search, insights and the roadmap need Adzuna keys. Everything else (resume builder, ATS score, Scam Radar) works without them.
+
+## Running without Docker
 
 ```bash
-# 1. MongoDB on localhost:27017 (e.g. `docker run -p 27017:27017 mongo:7`)
-# 2. Gateway
-cd gateway && cp .env.example .env   # set JWT_SECRET (>= 32 chars)
-npm install && npm run dev            # http://localhost:4000
-# 3. Web (proxies /api to the gateway)
-cd web && npm install && npm run dev  # http://localhost:5173
-# 4. ML service (optional in Phase 1)
+# MongoDB on localhost:27017  (e.g. docker run -p 27017:27017 mongo:7)
+
+# ML service (Python 3.11+; the first run downloads the embedding model)
 cd ml-service && python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
-ML_SHARED_SECRET=... uvicorn app.main:app --port 8000
+ML_SHARED_SECRET=... ADZUNA_APP_ID=... ADZUNA_APP_KEY=... uvicorn app.main:app --port 8000
+
+# Gateway
+cd gateway && cp .env.example .env     # set JWT_SECRET (>= 32 chars) and ML_SHARED_SECRET
+npm install && npm run dev             # http://localhost:4000
+npm run seed                           # optional: one clearly labelled DEMO DATA account + resume
+
+# Web (proxies /api to the gateway)
+cd web && npm install && npm run dev   # http://localhost:5173
 ```
 
-## Tests and checks
+### Training the scam classifier (optional, recommended)
 
 ```bash
-cd gateway && npm run typecheck && npm run lint && npm test   # API tests use mongodb-memory-server (downloads a mongod binary on first run)
-cd web && npm run typecheck && npm run lint && npm test
-cd ml-service && pytest
+pip install -r eval/requirements.txt
+# place EMSCAD at eval/data/fake_job_postings.csv, then:
+python eval/train_scam_classifier.py
 ```
+
+This writes `ml-service/models/scam_clf.joblib` and the tuned thresholds/weights. Restart the ML service and scam checks
+switch from **rule-only** to **hybrid** mode automatically (the UI shows which mode is active).
 
 ## Environment variables
 
-| Service | Variable | Notes |
-| --- | --- | --- |
-| gateway | `MONGODB_URI`, `JWT_SECRET` (>= 32 chars), `JWT_EXPIRES_IN`, `BCRYPT_COST` (>= 12), `CORS_ORIGINS`, `COOKIE_SAMESITE`, `ML_SERVICE_URL`, `ML_SHARED_SECRET` | see `gateway/.env.example` |
-| ml-service | `ML_SHARED_SECRET`, `GEMINI_API_KEY`, `ADZUNA_APP_ID`, `ADZUNA_APP_KEY`, `ADZUNA_COUNTRY` | Gemini/Adzuna unused until Phases 3–4 |
+| Service | Variable | Default | Notes |
+| --- | --- | --- | --- |
+| gateway | `MONGODB_URI` | – | Atlas SRV string in production |
+| gateway | `JWT_SECRET` | – | ≥ 32 characters |
+| gateway | `JWT_EXPIRES_IN` | `30m` | short-lived access token |
+| gateway | `BCRYPT_COST` | `12` | startup fails if < 12 |
+| gateway | `CORS_ORIGINS` | `http://localhost:5173` | strict allow-list; also used by the Origin check |
+| gateway | `COOKIE_SAMESITE` | `lax` | `none` requires HTTPS |
+| gateway | `ML_SERVICE_URL`, `ML_SHARED_SECRET` | – | internal contract |
+| ml-service | `ML_SHARED_SECRET` | – | must match the gateway |
+| ml-service | `ADZUNA_APP_ID`, `ADZUNA_APP_KEY`, `ADZUNA_COUNTRY` | –, –, `in` | `ADZUNA_BASE_URL` overrides the API root |
+| ml-service | `GEMINI_API_KEY`, `GEMINI_MODEL` | –, `gemini-2.0-flash` | optional |
+| ml-service | `EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | any sentence-transformers model |
+| ml-service | `SCAM_THETA1`, `SCAM_THETA2`, `SCAM_W_R`, `SCAM_RULE_FLOOR`, `SCAM_RULES_PATH`, `SCAM_MODEL_PATH` | 0.25, 0.5, 0.5, 1 | see below |
 
-Getting keys (needed later): Gemini — https://aistudio.google.com/apikey; Adzuna — https://developer.adzuna.com/ (free tier).
+## How the algorithms work
 
-## Auth design (Phase 1)
+**ATS score.** `MatchScore = round(100 · max(0, cos(f(R), f(J))))` with `f` = sentence-transformers (default
+`all-MiniLM-L6-v2`). Keyword sets: lowercase, strip punctuation, drop stop words and tokens shorter than 3 characters,
+lemmatize (simplemma plus a plural-folding step so "API"/"APIs" match); `M = W_R ∩ W_J`, `Γ = W_J \ W_R`. Only
+`(score, M, Γ)` go to Gemini (temperature 0.1); on any failure a deterministic template is returned. The UI states that the
+value is a rescaled similarity, **not a probability**.
 
-- Passwords: bcrypt, cost >= 12 (startup fails if configured lower); max 72 bytes to avoid silent truncation.
-- Session: HS256 JWT in an `httpOnly`, `SameSite=Lax` cookie (`Secure` in production), 30 min lifetime.
-- Login returns the same error for unknown email and wrong password and does a dummy hash comparison for unknown emails.
-- zod validation on every endpoint; structured errors `{ "error": { "code", "message", "details?" } }`.
-- Rate limit on login/register (20 per 15 min per IP); strict CORS allow-list; helmet.
-- API is versioned under `/api/v1`: `POST /auth/register|login|logout`, `GET /auth/me`, `GET|PUT /profile`.
+**Job matching.** Fetch listings from Adzuna, embed the profile (target role, profile, optional resume) and each listing
+(embeddings cached by model + text hash), keep the top K by cosine with a size-K min-heap, screen every result. High-risk
+listings are labelled, never hidden.
 
-## Resume builder (Phase 2)
+**Scam detection.** Four data-driven rule indicators (`ml-service/app/data/scam_rules.json`): h1 upfront fee/deposit,
+h2 bank details/OTP/wire transfer, h3 guaranteed hiring/"no interview", h4 personal email domain. `rho = fired / m`.
+Negations such as "no registration fee" do not fire (and never reach across a sentence). Classifier probability
+`P_clf` comes from TF-IDF + logistic regression trained on EMSCAD. Risk `r = w_r·rho + w_c·P_clf` (`w_r + w_c = 1`);
+bands: safe `r < θ1`, caution `θ1 ≤ r < θ2`, else high (defaults 0.25 / 0.5, or the values tuned on validation data).
+With no model file it runs **rule-only** (`w_r = 1, w_c = 0`) and says so. With 4 rules, one fired rule = 0.25 (caution),
+two = 0.5 (high).
+*Deviation:* by default the hybrid risk is floored at the rule-only risk (`r = max(r, rho)`; `SCAM_RULE_FLOOR=0` disables
+it) so explicit rule evidence cannot be diluted by the classifier; see the evaluation below for why this matters.
 
-- Resumes: `GET|POST /resumes`, `GET|PUT|DELETE /resumes/:id`, `GET /resumes/templates`. Max 25 per user. Every
-  lookup is scoped to the signed-in user; other users' ids return 404.
-- Export: `GET /resumes/:id/export?format=pdf|docx` (pdfkit / docx), styled per template.
-- Sharing: `POST /resumes/:id/share` (optional `expiresInDays`) returns a 256-bit token **once**; only its SHA-256 is
-  stored. Creating a new link replaces the old one. `DELETE /resumes/:id/share` revokes. The public read-only view is
-  `GET /public/resumes/:token` (rate-limited, `noindex`, exposes only title, template and content).
-- Phrasing suggestions: `POST /resumes/suggest` -> gateway -> ML service `/suggest` -> Gemini. Only the one snippet the
-  user clicks "Improve wording" on is sent. Without `GEMINI_API_KEY` the UI shows "Gemini is not configured".
-- Editing a resume clears any stored ATS result, because it would be stale.
+**Market intelligence.** Listings for a role/location are aggregated with pandas: per-skill listing counts (a listing counts
+a skill at most once) against a curated skill lexicon (`ml-service/app/data/skills_lexicon.json`, multi-word and alias aware),
+and salary statistics (count, min, max, mean, median, quartiles) from range midpoints, with the share that Adzuna
+*estimated* shown. Results are stored in `MarketInsights` (cached 10 minutes per role/location).
 
-## ATS analyzer (Phase 3)
+**Roadmap.** `d(s) = listings containing s / n`; `S_role = {s : d(s) ≥ τ}` (τ configurable, default 0.1);
+`G = S_role \ S_user`; the roadmap is `G` by descending `d(s)` (max 15 items). Your skills = profile skills ∪ resume skills ∪
+lexicon skills found in the resume text. Gemini gets only the role and skill names to write tips (template fallback).
+Milestones are *not started / in progress / completed*; `Progress = 100 · |completed| / |roadmap|`. Rebuilding keeps
+progress on skills that remain.
 
-`POST /api/v1/resumes/:id/analyze { jobDescription }` -> gateway builds plain text from the resume -> ML `POST /score`:
+## API (gateway, versioned under `/api/v1`)
 
-1. `e_R`, `e_J` = sentence-transformers embeddings (default `all-MiniLM-L6-v2`, set `EMBEDDING_MODEL` to change).
-2. `MatchScore = round(100 * max(0, cosine(e_R, e_J)))`.
-3. Keyword sets: lowercase, strip punctuation, drop stop words and tokens < 3 characters, lemmatize (`simplemma` plus
-   a plural-folding step so "API"/"APIs" match). `M = W_R ∩ W_J`, `Γ = W_J \ W_R`, ordered by frequency in the job description.
-4. Only `(score, M, Γ)` go to Gemini (temperature 0.1) for a short explanation; if Gemini is missing or fails, a
-   deterministic template is used. The UI shows which one produced the text.
+| Area | Endpoints |
+| --- | --- |
+| Auth | `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me` |
+| Profile | `GET /profile`, `PUT /profile` |
+| Resumes | `GET/POST /resumes`, `GET /resumes/templates`, `GET/PUT/DELETE /resumes/:id`, `POST /resumes/:id/analyze`, `POST/DELETE /resumes/:id/share`, `GET /resumes/:id/export?format=pdf\|docx`, `POST /resumes/suggest` |
+| Public | `GET /public/resumes/:token` (read-only shared resume) |
+| Jobs | `POST /jobs/search`, `POST /jobs/screen` |
+| Insights | `GET /insights?role&location`, `POST /insights/refresh` |
+| Roadmap | `GET /roadmap`, `POST /roadmap/generate`, `PATCH /roadmap/items` |
+| Account | `GET /account/export`, `POST /account/delete` |
+| Ops | `GET /status` (auth), unversioned `GET /health`, `GET /ready` |
 
-The result (score, matched, missing, explanation, model, raw cosine) is stored on the resume and cleared when the resume
-is edited. The job description itself is not stored, only its hash.
+ML service (internal, shared-secret header except `/health`): `/health`, `/internal/ping`, `/internal/status`, `/score`,
+`/screen`, `/rank`, `/aggregate`, `/roadmap`, `/suggest`. Errors everywhere use
+`{ "error": { "code", "message", "details?", "requestId" } }`.
 
-Documented deviations / caveats in `ml-service/app/keywords.py`: a small allow-list of short technical terms
-(`c++`, `c#`, `ai`, `ml`, `ui`, `ux`, `qa`, `ci/cd`, `.net`, `node.js`) is kept even though the spec drops tokens under
-3 characters, and job-ad boilerplate (`GENERIC_TERMS`, e.g. "experience", "team", "familiarity") is removed from both
-sets. Keywords are single words; multi-word skills ("machine learning") appear as separate words.
+## Security and privacy
 
-## Job matching and scam detection (Phase 4)
+* Passwords: bcrypt cost ≥ 12 (enforced at startup), ≤ 72 bytes; identical error and a dummy hash comparison for unknown emails.
+* Sessions: HS256 JWT, 30 min, in an `httpOnly` cookie (`Secure` in production, `SameSite=Lax`). CSRF defence in depth: JSON-only
+  bodies, strict CORS allow-list, and a server-side **Origin check** that rejects state-changing requests from other origins.
+* zod validation on every endpoint; 256 KB body limit; helmet; rate limits on login/register, analysis routes and the public
+  share view; nginx adds a CSP and security headers for the web app.
+* Authorization: every resume/roadmap/profile query is scoped to the signed-in user; other users get 404.
+* Share links: 256-bit token shown once, only its SHA-256 stored; optional expiry; revoke or re-share invalidates the old
+  link; `noindex`; only title/template/content are exposed.
+* Privacy: resume text goes to Google Gemini **only** when you click "Improve wording" (that one snippet). ATS explanations
+  send only the score and keyword lists; roadmap tips send only the role and skill names; scam checks and job matching send
+  nothing to an LLM. A visible notice says so on the sign-up page, builder, ATS page and in Settings.
+* Data rights: Settings → export everything as JSON; delete the account (password required), which removes the user, all
+  resumes (share links stop working) and the roadmap.
+* Secrets live only in server environment variables; Adzuna errors are re-raised without the request URL so keys cannot leak
+  into logs; unexpected errors return only a request id.
 
-- `POST /api/v1/jobs/search { role, location?, k, resumeId? }` -> gateway builds a profile text (target role, profile
-  skills/summary, optional resume) -> ML `POST /rank`, which fetches listings from Adzuna (**only the ML service calls
-  Adzuna**), embeds the profile and listings (listing embeddings cached by model + text hash), keeps the top K by cosine
-  with a size-K min-heap, and screens every result. Listings are upserted into `JobListings`.
-- `POST /api/v1/jobs/screen { text }` powers the Scam Radar page.
-- **Scam rules** live in `ml-service/app/data/scam_rules.json` (or `SCAM_RULES_PATH`): h1 upfront fee, h2 bank
-  details/OTP/wire transfer, h3 guaranteed hiring/"no interview", h4 personal email domain. Add a rule to the file and
-  it is used automatically; `rho = fired / number of rules`. Negation such as "no registration fee" does not fire a rule
-  (the negation never reaches across a sentence).
-- **Risk** `r = w_r*rho + w_c*P_clf`, bands safe `< 0.25`, caution `< 0.5`, else high (`SCAM_THETA1`, `SCAM_THETA2`,
-  `SCAM_W_R`). With no trained model file (`ml-service/models/scam_clf.joblib` or `SCAM_MODEL_PATH`) the service runs in
-  **rule-only mode** (`w_r=1, w_c=0`) and the UI says so. With 4 rules, one fired rule gives 0.25 (caution) and two give 0.5 (high).
-- High-risk listings are labelled and shown, never hidden. Every rating shows the fired indicators with the quoted text.
-- Getting Adzuna keys: https://developer.adzuna.com/ (free tier). Set `ADZUNA_APP_ID`, `ADZUNA_APP_KEY`, `ADZUNA_COUNTRY`
-  (default `in`) in the **ml-service** environment. `ADZUNA_BASE_URL` can point at a proxy or mock.
+## Evaluation results (real, reproducible)
 
-## Known limitations / assumptions
+Produced by `python eval/train_scam_classifier.py` on the EMSCAD CSV from the Hugging Face hub
+(`victor/real-or-fake-fake-jobposting-prediction`, CC0): 17,880 postings, 866 fraudulent (4.8%). Stratified 60/20/20 split,
+seed 42; all tuning (C=10, w_r=0.0, thresholds) on the validation split only. **Test split, fraud class positive:**
 
-- No refresh token: sessions end after the access-token lifetime and the user signs in again.
-- CSRF defence relies on `SameSite` cookies, the strict CORS allow-list and JSON-only bodies; no CSRF token.
-- Rate limiting is in-memory per process; use a shared store if the gateway is scaled out.
-- Resume sharing stores only a SHA-256 hash of the share token.
-- `ml-service` currently exposes `/health`, `/internal/ping`, `/suggest`, `/score`, `/screen` and `/rank`.
-- Adzuna returns only a short description snippet per listing (about 500 characters), so job matching and scam rules see
-  that snippet, not the full posting. A scam signal that appears later in the real posting can be missed.
-- Phase 4 was tested against a local mock of Adzuna's response format and with `httpx` mocks, **not** against the live
-  Adzuna API (no keys were available). The response parsing follows Adzuna's documented fields; verify with your keys.
-- Scam rules are keyword/regex heuristics: they miss scams that avoid these phrases and can flag legitimate text. They
-  are screening aids, not verdicts. `rho` assumes equal weight per rule.
-- The classifier loader unpickles `scam_clf.joblib`; only place a model file you trained yourself there.
-- MiniLM reads only the first ~256 tokens of each text. Longer resumes/job descriptions are truncated for the *score*
-  (the UI warns when this happens); the keyword lists use the full text.
-- The score measures semantic similarity, not a probability of passing a real employer's ATS.
-- The first `/score` call after the ML service starts loads the model (about 8 s on the test machine); later calls took
-  about 1.5 s. The Docker image downloads the model at build time. On Python 3.11 in Docker this is untested here.
-- The share URL cannot be shown again after creation (only a hash is stored); users create a new link instead.
-- The in-browser preview and the PDF/DOCX exports are separate renderers kept visually close but not pixel-identical;
-  DOCX output was checked for valid file structure only, not opened in Word.
-- Gemini suggestions were tested with the Gemini client mocked and with the key absent; no live Gemini call was made.
+| Variant | Precision | Recall | F1 | AUC-ROC | AUC-PR |
+| --- | --- | --- | --- | --- | --- |
+| Rule-only | 0.048 | 1.000 | 0.092 | 0.496 | 0.048 |
+| Classifier-only | 0.870 | 0.809 | 0.838 | 0.983 | 0.905 |
+| Hybrid, plain formula | 0.870 | 0.809 | 0.838 | 0.983 | 0.905 |
+| Hybrid + rule floor (deployed) | 0.870 | 0.809 | 0.838 | 0.982 | 0.900 |
+
+Deployed bands on the test set: *safe* 3,192 postings (0.4% fraudulent), *caution* 223 (9.0%), *high* 161 (87.0%).
+(Precision/recall use each variant's own validation-F1-optimal cut; "rule-only" degenerates to flagging everything.
+No-skill AUC-PR is the 4.8% prevalence.)
+
+**What this does and does not show — please read:**
+
+* The classifier is strong **on EMSCAD**. It is not evidence about live Adzuna listings: Adzuna gives short snippets, EMSCAD
+  has full postings (and was collected years ago), so expect lower real-world performance. `company_profile` was excluded
+  from training for this reason, but the distribution shift remains.
+* **The four rules carry essentially no signal on EMSCAD**: validation found `w_r = 0` (the hybrid collapses to the
+  classifier), and any rule fires on 0.0% of fraudulent and 0.6% of legitimate validation postings (h4 never fires; EMSCAD
+  appears to redact e-mail addresses). The rules target advance-fee/payment/identity scams, which EMSCAD barely contains, so
+  this dataset **cannot validate them**. They stay because they are transparent and give users concrete reasons, but they are
+  unevaluated heuristics, and they do produce false positives. That is why the rule floor exists: with `w_r = 0` a listing
+  demanding a registration fee could otherwise be rated "low risk" by the classifier alone. The floor costs 0.001 AUC-ROC here.
+* The ATS-vs-human-rating correlation and the job-ranking P@K/nDCG@K scripts are provided and unit-tested, but **no results
+  are reported** because they need rating data that only you can supply.
+
+## Testing: what was and was not run
+
+Run in the development sandbox and passing:
+
+| Suite | Result |
+| --- | --- |
+| `gateway`: typecheck (strict), eslint, vitest | 67 tests (real in-memory MongoDB; ML service mocked) |
+| `web`: typecheck, eslint, vitest, production build | 23 tests |
+| `ml-service`: ruff, pytest | 130 tests (includes one against the real MiniLM model) |
+| `eval`: pytest | 12 tests |
+| Browser end-to-end (Playwright, real MiniLM model, trained classifier) | register → profile → resume → ATS → job search (hybrid) → insights → roadmap + progress → export → account deletion; also resume builder, exports and sharing, scam radar, mobile width |
+
+**Not run / not verified:**
+
+* **Live Adzuna** and **live Gemini**: no keys were available. Adzuna was exercised against a local server returning
+  Adzuna-shaped JSON (and `httpx` mocks); Gemini against a mocked client and with the key absent. Parsing follows the
+  documented fields, but verify with your own keys.
+* **Docker**: images and `docker compose up` were not built (no Docker daemon in the sandbox); `docker compose config` validates.
+  Python 3.11 (the Docker version) was not used; tests ran on 3.13.
+* **GitHub Actions** workflow (`.github/workflows/ci.yml`) has never run.
+* DOCX output was checked for valid structure only, not opened in Word; PDF layout was viewed as a rendered image.
+* HTTPS/`Secure` cookie behaviour and multi-instance rate limiting were not tested.
+* `web/nginx.conf` itself was never run (nginx is not installed in the sandbox, so its syntax is unchecked). Its CSP string was
+  checked by serving the production build with the identical header from a small Node harness and driving it in a browser
+  (sign-up and the builder: no violations); the `/api` proxy and cache headers are untested.
+
+## Known limitations
+
+* No refresh tokens: sessions end after 30 minutes. No password reset or email verification flow.
+* Rate limiting is in memory per gateway process.
+* Adzuna descriptions are ~500-character snippets, so matching, skill extraction and scam rules only see the snippet;
+  skill demand is therefore a *lower bound* and a scam signal later in the real posting can be missed.
+* The skill lexicon (≈140 skills) is curated, not exhaustive; roadmap quality depends on it (`skills_lexicon.json` is editable).
+* MiniLM reads only the first ~256 tokens of each text; the UI warns when a resume or job description is truncated for the score.
+* ATS keywords are single words (multi-word skills appear as separate words); the score is similarity, not a hiring prediction.
+* Market data is a sample of at most ~100 listings per query; salary statistics use range midpoints and many Adzuna salaries
+  are estimates (the share is shown).
+* The classifier loader unpickles `scam_clf.joblib`: only use a model file you trained.
+* Preview and PDF/DOCX are separate renderers: close, not pixel-identical.
+
+## Honesty notes
+
+* No fake scores, listings or insights exist in production code paths. The seed script (`npm run seed`) creates one account
+  and one resume, both labelled **DEMO DATA**, and nothing else; it refuses to run with `NODE_ENV=production`.
+* The "layout preview" thumbnails on the New Resume page use obvious placeholder text ("Your Name") and say so.
+* Any stand-in or deviation from the specification is documented above (short-term allow-list and boilerplate list in keyword
+  extraction, the rule floor, single-word keywords).

@@ -2,7 +2,6 @@ import hashlib
 
 import numpy as np
 import pytest
-
 from app import embeddings
 
 

@@ -6,9 +6,12 @@ import AtsPage from "./pages/AtsPage";
 import Builder from "./pages/Builder";
 import Dashboard from "./pages/Dashboard";
 import JobMatches from "./pages/JobMatches";
+import MarketInsights from "./pages/MarketInsights";
 import PublicResume from "./pages/PublicResume";
 import { NewResumePage, ResumesPage } from "./pages/Resumes";
 import ScamRadar from "./pages/ScamRadar";
+import Settings from "./pages/Settings";
+import SkillRoadmap from "./pages/SkillRoadmap";
 
 export default function App() {
   return (
@@ -22,6 +25,9 @@ export default function App() {
           <Route path="/ats" element={<AtsPage />} />
           <Route path="/jobs" element={<JobMatches />} />
           <Route path="/scam-radar" element={<ScamRadar />} />
+          <Route path="/insights" element={<MarketInsights />} />
+          <Route path="/roadmap" element={<SkillRoadmap />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/resumes" element={<ResumesPage />} />
           <Route path="/resumes/new" element={<NewResumePage />} />
           <Route path="/resumes/:id" element={<Builder />} />

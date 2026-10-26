@@ -105,3 +105,34 @@ export interface JobResult {
   matchedTerms: string[];
   scam: Screening;
 }
+
+export interface Insight {
+  role: string;
+  location: string;
+  listingCount: number;
+  skills: { skill: string; count: number; demand: number }[];
+  salary: { count: number; min: number; max: number; mean: number; median: number; p25: number; p75: number; currency: string } | null;
+  salaryPredictedShare: number | null;
+  updatedAt: string;
+}
+
+export type MilestoneStatus = "not_started" | "in_progress" | "completed";
+export interface RoadmapItem { skill: string; count: number; demand: number; guidance: string; guidanceSource: "gemini" | "template"; status: MilestoneStatus }
+export interface Roadmap {
+  role: string;
+  location: string;
+  tau: number;
+  listingCount: number;
+  generatedAt: string;
+  items: RoadmapItem[];
+  covered: { skill: string; count: number; demand: number }[];
+  progress: { completed: number; inProgress: number; total: number; percent: number };
+}
+
+export interface Profile {
+  fullName?: string;
+  location?: string;
+  professional?: { headline?: string; yearsExperience?: number; summary?: string };
+  preferredRoles?: string[];
+  skills?: string[];
+}

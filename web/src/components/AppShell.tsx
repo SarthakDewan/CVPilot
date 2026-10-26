@@ -3,16 +3,16 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { BriefcaseIcon, ChartIcon, CloseIcon, CogIcon, FileIcon, HomeIcon, LogoutIcon, Logo, MapIcon, MenuIcon, ShieldIcon, TargetIcon } from "./icons";
 
-interface NavItem { to: string; label: string; icon: ComponentType<{ className?: string }>; phase?: number }
+interface NavItem { to: string; label: string; icon: ComponentType<{ className?: string }> }
 const NAV: NavItem[] = [
   { to: "/", label: "Dashboard", icon: HomeIcon },
   { to: "/resumes", label: "Resumes", icon: FileIcon },
   { to: "/ats", label: "ATS Score", icon: TargetIcon },
   { to: "/jobs", label: "Job Matches", icon: BriefcaseIcon },
   { to: "/scam-radar", label: "Scam Radar", icon: ShieldIcon },
-  { to: "/insights", label: "Market Insights", icon: ChartIcon, phase: 6 },
-  { to: "/roadmap", label: "Skill Roadmap", icon: MapIcon, phase: 6 },
-  { to: "/settings", label: "Settings", icon: CogIcon, phase: 6 },
+  { to: "/insights", label: "Market Insights", icon: ChartIcon },
+  { to: "/roadmap", label: "Skill Roadmap", icon: MapIcon },
+  { to: "/settings", label: "Settings", icon: CogIcon },
 ];
 
 export function AppShell() {
@@ -21,25 +21,17 @@ export function AppShell() {
 
   const nav = (
     <nav aria-label="Main" className="flex-1 space-y-1 px-3">
-      {NAV.map(({ to, label, icon: Icon, phase }) =>
-        phase ? (
-          <div key={to} className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-500" aria-disabled="true" title={`Coming in phase ${phase}`}>
-            <Icon className="opacity-60" />
-            <span className="flex-1">{label}</span>
-            <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Soon</span>
-          </div>
-        ) : (
-          <NavLink
-            key={to} to={to} end={to === "/"} onClick={() => setOpen(false)}
-            className={({ isActive }) =>
-              `group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${isActive ? "bg-brand-600 text-white shadow" : "text-slate-300 hover:bg-white/10 hover:text-white"}`
-            }
-          >
-            <Icon className="transition group-hover:scale-110" />
-            {label}
-          </NavLink>
-        ),
-      )}
+      {NAV.map(({ to, label, icon: Icon }) => (
+        <NavLink
+          key={to} to={to} end={to === "/"} onClick={() => setOpen(false)}
+          className={({ isActive }) =>
+            `group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${isActive ? "bg-brand-600 text-white shadow" : "text-slate-300 hover:bg-white/10 hover:text-white"}`
+          }
+        >
+          <Icon className="transition group-hover:scale-110" />
+          {label}
+        </NavLink>
+      ))}
     </nav>
   );
 

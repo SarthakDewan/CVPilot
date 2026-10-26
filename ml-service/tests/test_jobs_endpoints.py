@@ -1,9 +1,9 @@
 import httpx
 import pytest
-from fastapi.testclient import TestClient
-
 from app import adzuna, scam
 from app.main import app
+from fastapi.testclient import TestClient
+
 from tests.test_adzuna import PAYLOAD
 
 client = TestClient(app)

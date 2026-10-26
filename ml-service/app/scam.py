@@ -1,7 +1,7 @@
 """Hybrid scam detection: data-driven rules + optional classifier, fused into a risk score.
 
     rho  = (rules fired) / m                      (m = number of rules)
-    r    = w_r * rho + w_c * P_clf                (w_r + w_c = 1)
+    r    = w_r * rho + w_c * P_clf                (w_r + w_c = 1; then r = max(r, rho) if rule_floor)
     band = safe if r < theta1; caution if theta1 <= r < theta2; else high
 
 With no trained classifier, falls back to rule-only mode (w_r = 1, w_c = 0) and says so in `mode`.
@@ -58,13 +58,22 @@ class Settings:
     theta1: float = 0.25
     theta2: float = 0.5
     w_r: float = 0.5  # w_c = 1 - w_r
+    # Deviation from the plain formula (documented in the README): in hybrid mode the risk is never lower than the
+    # rule-only risk, so explicit rule evidence (e.g. "pay a registration fee") cannot be diluted by the classifier.
+    rule_floor: bool = True
 
     @staticmethod
     def from_env() -> "Settings":
+        """Defaults < tuned values from models/scam_settings.json (written by the training script) < env vars."""
+        base = {"theta1": 0.25, "theta2": 0.5, "w_r": 0.5}
+        tuned_path = Path(os.environ.get("SCAM_SETTINGS_PATH") or DEFAULT_SETTINGS_PATH)
+        if tuned_path.exists() and get_classifier() is not None:  # tuned values only make sense with their model
+            base.update({k: float(v) for k, v in json.loads(tuned_path.read_text()).items() if k in base})
         s = Settings(
-            theta1=float(os.environ.get("SCAM_THETA1", 0.25)),
-            theta2=float(os.environ.get("SCAM_THETA2", 0.5)),
-            w_r=float(os.environ.get("SCAM_W_R", 0.5)),
+            theta1=float(os.environ.get("SCAM_THETA1", base["theta1"])),
+            theta2=float(os.environ.get("SCAM_THETA2", base["theta2"])),
+            w_r=float(os.environ.get("SCAM_W_R", base["w_r"])),
+            rule_floor=os.environ.get("SCAM_RULE_FLOOR", "1") not in ("0", "false", "False"),
         )
         if not (0 <= s.theta1 < s.theta2 <= 1) or not (0 <= s.w_r <= 1):
             raise ValueError("Invalid scam settings: need 0 <= theta1 < theta2 <= 1 and 0 <= SCAM_W_R <= 1")
@@ -149,7 +158,8 @@ def fuse(rho: float, p_clf: float | None, s: Settings) -> tuple[float, str]:
     """Return (risk, mode). Falls back to rule-only when there is no classifier probability."""
     if p_clf is None:
         return rho, "rule-only"
-    return s.w_r * rho + (1 - s.w_r) * p_clf, "hybrid"
+    risk = s.w_r * rho + (1 - s.w_r) * p_clf
+    return (max(risk, rho) if s.rule_floor else risk), "hybrid"
 
 
 def screen(text: str, classifier=None, settings: Settings | None = None, rs: RuleSet | None = None) -> Screening:
@@ -165,6 +175,7 @@ def screen(text: str, classifier=None, settings: Settings | None = None, rs: Rul
 # ---- optional trained classifier (trained in Phase 5; absent => rule-only) -------------------
 
 DEFAULT_MODEL_PATH = Path(__file__).resolve().parent.parent / "models" / "scam_clf.joblib"
+DEFAULT_SETTINGS_PATH = DEFAULT_MODEL_PATH.with_name("scam_settings.json")
 _clf_cache: tuple[str, object | None] | None = None
 
 

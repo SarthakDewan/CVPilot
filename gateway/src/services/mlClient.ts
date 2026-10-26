@@ -26,3 +26,13 @@ export async function mlPost<T>(
   if (!res.ok) throw new AppError(502, "ml_error", "The analysis service returned an error");
   return (await res.json()) as T;
 }
+
+/** Readiness probe: true when the ML service answers and accepts our shared secret. */
+export async function mlPing(cfg: Pick<Config, "mlServiceUrl" | "mlSharedSecret">): Promise<boolean> {
+  try {
+    const res = await fetch(`${cfg.mlServiceUrl}/internal/ping`, { headers: { "x-ml-secret": cfg.mlSharedSecret }, signal: AbortSignal.timeout(3000) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}

@@ -42,6 +42,7 @@ export const mlRankSchema = z.object({
       cosine: z.number(),
       matched_terms: z.array(z.string()),
       keywords: z.array(z.string()),
+      skills: z.array(z.string()).default([]),
       scam: screeningSchema,
     }),
   ),

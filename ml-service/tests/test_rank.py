@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-
 from app import rank, scam
 from app.adzuna import Listing
 

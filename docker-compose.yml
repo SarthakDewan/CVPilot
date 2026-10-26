@@ -1,9 +1,9 @@
-# Local development stack. Copy .env.example to .env first (see README).
+# Local/self-hosted stack. Copy .env.example to .env first (see README).
 services:
   mongo:
     image: mongo:7
     restart: unless-stopped
-    ports: ["27017:27017"]
+    ports: ["127.0.0.1:27017:27017"]   # loopback only; remove to keep it internal
     volumes: [mongo-data:/data/db]
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
@@ -17,9 +17,12 @@ services:
     environment:
       ML_SHARED_SECRET: ${ML_SHARED_SECRET:?set ML_SHARED_SECRET in .env}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
       ADZUNA_APP_ID: ${ADZUNA_APP_ID:-}
       ADZUNA_APP_KEY: ${ADZUNA_APP_KEY:-}
       ADZUNA_COUNTRY: ${ADZUNA_COUNTRY:-in}
+    # Trained scam classifier (created by `python eval/train_scam_classifier.py`). Absent => rule-only mode.
+    volumes: ["./ml-service/models:/srv/models:ro"]
     # Not published to the host: only the gateway can reach it.
     expose: ["8000"]
 
@@ -32,14 +35,14 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 4000
-      MONGODB_URI: mongodb://mongo:27017/cvpilot
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017/cvpilot}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-30m}
       BCRYPT_COST: ${BCRYPT_COST:-12}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
       ML_SERVICE_URL: http://ml-service:8000
       ML_SHARED_SECRET: ${ML_SHARED_SECRET:?set ML_SHARED_SECRET in .env}
-    ports: ["4000:4000"]
+    ports: ["127.0.0.1:4000:4000"]
 
   web:
     build: ./web

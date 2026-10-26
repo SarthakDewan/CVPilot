@@ -1,9 +1,8 @@
 import numpy as np
 import pytest
-from fastapi.testclient import TestClient
-
 from app import embeddings, explain, gemini
 from app.main import app
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
 H = {"x-ml-secret": "s3cret"}
