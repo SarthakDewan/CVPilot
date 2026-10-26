@@ -3,8 +3,8 @@
 Candidate-facing career intelligence: resume builder, semantic ATS analyzer, job matching, market insights,
 skill-gap roadmap and scam detection, linked in one data flow.
 
-> **Status: Phase 3 of 7** — auth, resume builder (3 templates, live preview, PDF/DOCX export, share links), and the
-> semantic ATS analyzer. Job matching, scam detection, insights and roadmap are **not built yet**; those sidebar items are marked "Soon". The dashboard shows only your real data.
+> **Status: Phase 4 of 7** — auth, resume builder, semantic ATS analyzer, job matching (Adzuna) and rule-based scam
+> screening. The trained scam classifier (Phase 5), market insights, roadmap and settings are **not built yet**; those sidebar items are marked "Soon". The dashboard shows only your real data.
 
 ## Architecture
 
@@ -99,13 +99,38 @@ Documented deviations / caveats in `ml-service/app/keywords.py`: a small allow-l
 3 characters, and job-ad boilerplate (`GENERIC_TERMS`, e.g. "experience", "team", "familiarity") is removed from both
 sets. Keywords are single words; multi-word skills ("machine learning") appear as separate words.
 
+## Job matching and scam detection (Phase 4)
+
+- `POST /api/v1/jobs/search { role, location?, k, resumeId? }` -> gateway builds a profile text (target role, profile
+  skills/summary, optional resume) -> ML `POST /rank`, which fetches listings from Adzuna (**only the ML service calls
+  Adzuna**), embeds the profile and listings (listing embeddings cached by model + text hash), keeps the top K by cosine
+  with a size-K min-heap, and screens every result. Listings are upserted into `JobListings`.
+- `POST /api/v1/jobs/screen { text }` powers the Scam Radar page.
+- **Scam rules** live in `ml-service/app/data/scam_rules.json` (or `SCAM_RULES_PATH`): h1 upfront fee, h2 bank
+  details/OTP/wire transfer, h3 guaranteed hiring/"no interview", h4 personal email domain. Add a rule to the file and
+  it is used automatically; `rho = fired / number of rules`. Negation such as "no registration fee" does not fire a rule
+  (the negation never reaches across a sentence).
+- **Risk** `r = w_r*rho + w_c*P_clf`, bands safe `< 0.25`, caution `< 0.5`, else high (`SCAM_THETA1`, `SCAM_THETA2`,
+  `SCAM_W_R`). With no trained model file (`ml-service/models/scam_clf.joblib` or `SCAM_MODEL_PATH`) the service runs in
+  **rule-only mode** (`w_r=1, w_c=0`) and the UI says so. With 4 rules, one fired rule gives 0.25 (caution) and two give 0.5 (high).
+- High-risk listings are labelled and shown, never hidden. Every rating shows the fired indicators with the quoted text.
+- Getting Adzuna keys: https://developer.adzuna.com/ (free tier). Set `ADZUNA_APP_ID`, `ADZUNA_APP_KEY`, `ADZUNA_COUNTRY`
+  (default `in`) in the **ml-service** environment. `ADZUNA_BASE_URL` can point at a proxy or mock.
+
 ## Known limitations / assumptions
 
 - No refresh token: sessions end after the access-token lifetime and the user signs in again.
 - CSRF defence relies on `SameSite` cookies, the strict CORS allow-list and JSON-only bodies; no CSRF token.
 - Rate limiting is in-memory per process; use a shared store if the gateway is scaled out.
 - Resume sharing stores only a SHA-256 hash of the share token.
-- `ml-service` currently exposes `/health`, `/internal/ping`, `/suggest` and `/score`.
+- `ml-service` currently exposes `/health`, `/internal/ping`, `/suggest`, `/score`, `/screen` and `/rank`.
+- Adzuna returns only a short description snippet per listing (about 500 characters), so job matching and scam rules see
+  that snippet, not the full posting. A scam signal that appears later in the real posting can be missed.
+- Phase 4 was tested against a local mock of Adzuna's response format and with `httpx` mocks, **not** against the live
+  Adzuna API (no keys were available). The response parsing follows Adzuna's documented fields; verify with your keys.
+- Scam rules are keyword/regex heuristics: they miss scams that avoid these phrases and can flag legitimate text. They
+  are screening aids, not verdicts. `rho` assumes equal weight per rule.
+- The classifier loader unpickles `scam_clf.joblib`; only place a model file you trained yourself there.
 - MiniLM reads only the first ~256 tokens of each text. Longer resumes/job descriptions are truncated for the *score*
   (the UI warns when this happens); the keyword lists use the full text.
 - The score measures semantic similarity, not a probability of passing a real employer's ATS.

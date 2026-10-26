@@ -8,7 +8,6 @@ import type { ResumeSummary } from "../lib/types";
 import { timeAgo } from "../lib/time";
 
 const UPCOMING = [
-  ["Job Matches & Scam Radar", "Ranked live listings, each with a scam-risk band and reasons.", 4],
   ["Market Insights & Skill Roadmap", "Skill demand and salary stats, and a learning plan for your gaps.", 6],
 ] as const;
 
@@ -33,7 +32,7 @@ export default function Dashboard() {
       <header className="animate-fade-up rounded-2xl bg-gradient-to-br from-brand-600 via-brand-700 to-violet-700 p-6 text-white shadow-lg sm:p-8">
         <p className="text-sm text-brand-100">Welcome back</p>
         <h1 className="mt-1 text-2xl font-extrabold sm:text-3xl">Hi, {name} 👋</h1>
-        <p className="mt-2 max-w-xl text-sm text-brand-100">Build your resume now; Check it against a job description on the ATS Score page; job matching and market insights are coming next.</p>
+        <p className="mt-2 max-w-xl text-sm text-brand-100">Build your resume now; Check it against a job description on the ATS Score page; find ranked jobs with scam-risk checks on Job Matches; market insights are coming next.</p>
         <Link to="/resumes/new" className="mt-5 inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-brand-700 shadow transition hover:-translate-y-0.5 hover:shadow-lg">
           <PlusIcon className="h-4 w-4" /> New resume
         </Link>

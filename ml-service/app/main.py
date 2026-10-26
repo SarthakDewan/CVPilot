@@ -1,7 +1,7 @@
 """CVPilot ML service.
 
-Phase 3: /health, /suggest and /score. /score, /rank, /screen, /aggregate and
-/roadmap are added in later phases. Every route except /health requires the
+Phase 4: /health, /suggest, /score, /screen and /rank. /aggregate and /roadmap
+are added in later phases. Every route except /health requires the
 shared-secret header.
 """
 import hmac
@@ -12,7 +12,7 @@ from typing import Literal
 from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
-from . import ats as ats_mod, gemini, suggest as suggest_mod
+from . import adzuna, ats as ats_mod, gemini, rank as rank_mod, scam, suggest as suggest_mod
 
 SECRET_HEADER = "x-ml-secret"
 
@@ -75,3 +75,57 @@ def score(req: ScoreRequest) -> ScoreResponse:
     except (ImportError, OSError) as exc:  # model could not be loaded/downloaded
         raise HTTPException(status_code=503, detail="Embedding model is unavailable") from exc
     return ScoreResponse(**result.__dict__)
+
+
+class ScreenRequest(BaseModel):
+    text: str = Field(min_length=20, max_length=30000)
+
+
+def _screening_dict(s: scam.Screening) -> dict:
+    return {
+        "rho": s.rho, "p_clf": s.p_clf, "risk": s.risk, "band": s.band, "mode": s.mode,
+        "fired": [f.__dict__ for f in s.fired], "checked": s.checked,
+    }
+
+
+@app.post("/screen", dependencies=[Depends(require_secret)])
+def screen(req: ScreenRequest) -> dict:
+    return _screening_dict(scam.screen(req.text, classifier=scam.get_classifier()))
+
+
+class RankRequest(BaseModel):
+    profile_text: str = Field(min_length=10, max_length=30000)
+    profile_skills: list[str] = Field(default_factory=list, max_length=200)
+    what: str = Field(min_length=2, max_length=120)
+    where: str = Field(default="", max_length=120)
+    k: int = Field(default=10, ge=1, le=50)
+    fetch: int = Field(default=30, ge=5, le=50)
+
+
+@app.post("/rank", dependencies=[Depends(require_secret)])
+def rank_jobs(req: RankRequest) -> dict:
+    try:
+        listings = adzuna.search(req.what, req.where, limit=req.fetch)
+    except adzuna.AdzunaNotConfigured:
+        raise HTTPException(status_code=503, detail="Job search is unavailable: Adzuna is not configured")
+    except adzuna.AdzunaError:
+        raise HTTPException(status_code=502, detail="Adzuna request failed")
+    try:
+        ranked = rank_mod.rank(req.profile_text, req.profile_skills, listings, req.k, classifier=scam.get_classifier())
+    except (ImportError, OSError) as exc:
+        raise HTTPException(status_code=503, detail="Embedding model is unavailable") from exc
+    return {
+        "fetched": len(listings),
+        "mode": ranked[0].screening.mode if ranked else ("hybrid" if scam.get_classifier() else "rule-only"),
+        "results": [
+            {
+                "source_id": r.listing.source_id, "title": r.listing.title, "company": r.listing.company,
+                "location": r.listing.location, "description": r.listing.description, "url": r.listing.url,
+                "salary_min": r.listing.salary_min, "salary_max": r.listing.salary_max,
+                "salary_predicted": r.listing.salary_predicted, "currency": r.listing.currency,
+                "score": r.score, "cosine": r.cosine, "matched_terms": r.matched_terms, "keywords": r.keywords,
+                "scam": _screening_dict(r.screening),
+            }
+            for r in ranked
+        ],
+    }

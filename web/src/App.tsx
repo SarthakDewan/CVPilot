@@ -5,8 +5,10 @@ import { AuthPage } from "./pages/AuthPages";
 import AtsPage from "./pages/AtsPage";
 import Builder from "./pages/Builder";
 import Dashboard from "./pages/Dashboard";
+import JobMatches from "./pages/JobMatches";
 import PublicResume from "./pages/PublicResume";
 import { NewResumePage, ResumesPage } from "./pages/Resumes";
+import ScamRadar from "./pages/ScamRadar";
 
 export default function App() {
   return (
@@ -18,6 +20,8 @@ export default function App() {
         <Route element={<AppShell />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/ats" element={<AtsPage />} />
+          <Route path="/jobs" element={<JobMatches />} />
+          <Route path="/scam-radar" element={<ScamRadar />} />
           <Route path="/resumes" element={<ResumesPage />} />
           <Route path="/resumes/new" element={<NewResumePage />} />
           <Route path="/resumes/:id" element={<Builder />} />

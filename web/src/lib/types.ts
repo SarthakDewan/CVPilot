@@ -79,3 +79,29 @@ export function completeness(c: ResumeContent): { pct: number; missing: string[]
 
 export const range = (start: string, end: string, current?: boolean) =>
   [start, current ? "Present" : end].filter(Boolean).join(" – ");
+
+export type ScamBand = "safe" | "caution" | "high";
+export interface FiredRule { id: string; name: string; reason: string; evidence: string }
+export interface Screening {
+  rho: number;
+  p_clf: number | null;
+  risk: number;
+  band: ScamBand;
+  mode: "hybrid" | "rule-only";
+  fired: FiredRule[];
+  checked: { id: string; name: string; fired: boolean }[];
+}
+
+export interface JobResult {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  description: string;
+  url: string;
+  salary: { min: number | null; max: number | null; currency: string; predicted: boolean };
+  score: number;
+  cosine: number;
+  matchedTerms: string[];
+  scam: Screening;
+}
