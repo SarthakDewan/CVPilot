@@ -83,11 +83,11 @@ export function exportFileName(title: string, ext: string): string {
 
 // ---------------------------------------------------------------- PDF
 
-export function renderPdf(c: ResumeContent, templateId: TemplateId): Promise<Buffer> {
+export function renderPdf(c: ResumeContent, templateId: TemplateId, opts: { compress?: boolean } = {}): Promise<Buffer> {
   const t = TEMPLATES[templateId];
   const layout = buildLayout(c);
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: "A4", margins: { top: 40, bottom: 40, left: 46, right: 46 } });
+    const doc = new PDFDocument({ size: "A4", margins: { top: 40, bottom: 40, left: 46, right: 46 }, compress: opts.compress ?? true });
     const chunks: Buffer[] = [];
     doc.on("data", (d: Buffer) => chunks.push(d));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
@@ -111,7 +111,7 @@ function writePdf(doc: PDFKit.PDFDocument, layout: Layout, t: TemplateStyle) {
   for (const section of layout.sections) {
     if (doc.y > doc.page.height - 120) doc.addPage();
     const title = t.uppercaseHeadings ? section.title.toUpperCase() : section.title;
-    doc.font(t.pdfFont.bold).fontSize(t.headingSize).fillColor(accent).text(title);
+    doc.font(t.pdfFont.bold).fontSize(t.headingSize).fillColor(accent).text(title, left, doc.y); // explicit x: bullets above leave doc.x indented
     if (t.headingRule) {
       const y = doc.y + 1;
       doc.moveTo(left, y).lineTo(left + width, y).lineWidth(0.6).strokeColor(accent).stroke();

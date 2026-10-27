@@ -82,7 +82,7 @@ export default function Builder() {
         <input
           aria-label="Resume name" value={title} maxLength={120}
           onChange={(e) => { setTitle(e.target.value); touch(); }}
-          className="min-w-0 flex-1 rounded-md border border-transparent px-2 py-1 text-lg font-bold hover:border-slate-300 focus:border-brand-500 focus:outline-none"
+          className="w-full min-w-0 rounded-md border border-transparent px-2 py-1 text-lg font-bold hover:border-slate-300 focus:border-brand-500 focus:outline-none sm:w-auto sm:flex-1"
         />
         <button onClick={() => save === "error" && void saveNow()} className={`flex items-center gap-1.5 text-xs font-medium ${save === "error" ? "text-rose-600 underline" : "text-slate-500"}`} aria-live="polite">
           <span className={`h-2 w-2 rounded-full ${{ saved: "bg-emerald-500", unsaved: "bg-amber-400", saving: "animate-pulse bg-brand-500", error: "bg-rose-500" }[save]}`} />{saveLabel}

@@ -289,3 +289,45 @@ describe("ATS analysis", () => {
     expect((await a.get(`/api/v1/resumes/${id}`)).body.resume.ats).toBeNull();
   });
 });
+
+describe("PDF layout regression", () => {
+  /** Reads (x, text) for every text run from an uncompressed pdfkit content stream. */
+  function textRuns(pdf: string): { x: number; text: string }[] {
+    const lines = pdf.split("\n");
+    const out: { x: number; text: string }[] = [];
+    for (let i = 0; i < lines.length - 1; i++) {
+      const tm = /^1 0 0 1 ([\d.]+) [\d.]+ Tm$/.exec(lines[i]!);
+      if (!tm) continue;
+      let j = i + 1;
+      while (j < lines.length && !/TJ\s*$/.test(lines[j]!)) j++; // a font/size line may sit between Tm and the text
+      const hex = [...(lines[j] ?? "").matchAll(/<([0-9a-f]+)>/g)].map((m) => m[1]!).join("");
+      out.push({ x: Number(tm[1]), text: Buffer.from(hex, "hex").toString("latin1") });
+    }
+    return out;
+  }
+
+  it("keeps every section heading at the left margin, including after bullet lists", async () => {
+    const { renderPdf } = await import("../src/services/exporters.js");
+    const { resumeContentSchema } = await import("../src/services/resumeSchema.js");
+    const content = resumeContentSchema.parse({
+      basics: { fullName: "Ada" },
+      summary: "Engineer.",
+      skills: ["Python"],
+      experience: [{ company: "A", role: "B", bullets: ["one", "two"] }],
+      projects: [{ name: "P", bullets: ["x"] }],
+      education: [{ institution: "U", degree: "B.E." }],
+      achievements: ["won"],
+      certifications: [{ name: "Cert" }],
+    });
+    for (const template of ["classic", "modern", "compact"] as const) {
+      const runs = textRuns((await renderPdf(content, template, { compress: false })).toString("latin1"));
+      const headings = ["summary", "skills", "experience", "projects", "education", "achievements", "certifications"].map((h) =>
+        runs.find((r) => r.text.toLowerCase() === h),
+      );
+      expect(headings.every(Boolean)).toBe(true);
+      expect(new Set(headings.map((h) => h!.x)).size).toBe(1); // all headings share one x
+      const bullet = runs.find((r) => r.text.includes("one"))!;
+      expect(bullet.x).toBeGreaterThan(headings[0]!.x); // bullets stay indented
+    }
+  });
+});
