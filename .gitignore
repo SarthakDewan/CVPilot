@@ -13,3 +13,4 @@ eval/data/
 *.tsbuildinfo
 ml-service/models/*
 !ml-service/models/.gitkeep
+.local/

@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 
 if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
   echo "Docker with the 'docker compose' plugin is required: https://docs.docker.com/get-docker/" >&2
-  echo "No Docker? See README.md, section 'Running without Docker'." >&2
+  echo "No Docker? Run it without Docker instead (Windows, macOS, Linux):  node scripts/dev.mjs" >&2
   exit 1
 fi
 

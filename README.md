@@ -36,6 +36,21 @@ browser ──► web (React + Vite, nginx) ──/api──► gateway (Node/Ex
 | `ml-service/` | FastAPI, sentence-transformers, scikit-learn, pandas, simplemma |
 | `eval/` | Training and evaluation scripts (no fabricated numbers) |
 
+## Quick start without Docker (Windows, macOS, Linux)
+
+Needs only **Node 20+** and **Python 3.10+** (no database to install; a local one is started for you):
+
+```bash
+git clone https://github.com/SarthakDewan/CVPilot && cd CVPilot
+node scripts/dev.mjs        # then open http://localhost:5173
+```
+
+The first run installs everything and downloads PyTorch (about 1 GB) and a MongoDB binary, so allow several minutes; later
+runs start in seconds. Ctrl+C stops all four processes. Your data is kept in `.local/mongo`; random secrets are kept in
+`.local/secrets.json`. To enable job search, insights and the roadmap, put `ADZUNA_APP_ID=...` and `ADZUNA_APP_KEY=...`
+(optionally `GEMINI_API_KEY=...`) in a root `.env` file and restart. Tested on Linux; the Windows-specific parts (Python
+launcher detection, `taskkill` shutdown) were written but not run on Windows.
+
 ## Quick start (Docker)
 
 One command (needs Docker with the compose plugin; creates `.env` with random secrets, builds, starts, and prints the link):
