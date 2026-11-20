@@ -38,6 +38,14 @@ browser ──► web (React + Vite, nginx) ──/api──► gateway (Node/Ex
 
 ## Quick start (Docker)
 
+One command (needs Docker with the compose plugin; creates `.env` with random secrets, builds, starts, and prints the link):
+
+```bash
+./start-local.sh        # then open http://localhost:8080
+```
+
+Or step by step:
+
 ```bash
 cp .env.example .env
 # Put two different random secrets in .env (JWT_SECRET, ML_SHARED_SECRET):
