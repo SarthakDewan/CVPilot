@@ -49,7 +49,13 @@ The first run installs everything and downloads PyTorch (about 1 GB) and a Mongo
 runs start in seconds. Ctrl+C stops all four processes. Your data is kept in `.local/mongo`; random secrets are kept in
 `.local/secrets.json`. To enable job search, insights and the roadmap, put `ADZUNA_APP_ID=...` and `ADZUNA_APP_KEY=...`
 (optionally `GEMINI_API_KEY=...`) in a root `.env` file and restart. Tested on Linux; the Windows-specific parts (Python
-launcher detection, `taskkill` shutdown) were written but not run on Windows.
+launcher detection, `taskkill` shutdown) were written but not run on Windows; a user's Windows run got through Node,
+Python and all installs, and exposed the MongoDB-download failure below.
+
+**Database options** (the launcher picks the first that applies): `MONGODB_URI` in a root `.env` (e.g. a free MongoDB Atlas
+cluster) -> a MongoDB already installed on the computer (found automatically) -> a downloaded copy. The download comes from
+`fastdl.mongodb.org`; if your network blocks it (`getaddrinfo ENOTFOUND fastdl.mongodb.org`), use Atlas or install MongoDB
+Community Server. The launcher prints these instructions when the database fails to start.
 
 ## Quick start (Docker)
 
