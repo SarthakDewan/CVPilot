@@ -64,3 +64,18 @@ describe("auth UI", () => {
     expect(await screen.findByText(/no resumes yet/i)).toBeInTheDocument();
   });
 });
+
+describe("Resume Studio", () => {
+  it("parses a demo resume, shows an ATS score and updates it live after an edit", async () => {
+    mockFetch((url) => (url.endsWith("/auth/me") ? { status: 200, body: { user: { id: "1", email: "a@b.co" } } } : { status: 404 }));
+    renderAt("/resume-studio");
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /Demo: Jordan Ellis/ }));
+    const score = await screen.findByLabelText("ATS score");
+    const before = Number(score.textContent?.match(/\d+/)?.[0]);
+    expect(before).toBeLessThan(50);
+    await user.type(screen.getByLabelText("Add skill"), "SEO{Enter}");
+    await waitFor(() => expect(Number(screen.getByLabelText("ATS score").textContent?.match(/\d+/)?.[0])).toBeGreaterThan(before));
+    expect(screen.getByText(/since parsing/)).toBeInTheDocument();
+  });
+});

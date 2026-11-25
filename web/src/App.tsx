@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import JobMatches from "./pages/JobMatches";
 import MarketInsights from "./pages/MarketInsights";
 import PublicResume from "./pages/PublicResume";
+import ResumeStudio from "./pages/ResumeStudio";
 import { NewResumePage, ResumesPage } from "./pages/Resumes";
 import ScamRadar from "./pages/ScamRadar";
 import Settings from "./pages/Settings";
@@ -23,6 +24,7 @@ export default function App() {
         <Route element={<AppShell />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/ats" element={<AtsPage />} />
+          <Route path="/resume-studio" element={<ResumeStudio />} />
           <Route path="/jobs" element={<JobMatches />} />
           <Route path="/scam-radar" element={<ScamRadar />} />
           <Route path="/insights" element={<MarketInsights />} />
