@@ -212,6 +212,8 @@ start("api", "npx", ["tsx", "src/server.ts"], {
   env: {
     ...process.env, NODE_ENV: "development", PORT: String(PORTS.api), MONGODB_URI: mongoUri, JWT_SECRET: secrets.jwt,
     ML_SHARED_SECRET: secrets.ml, ML_SERVICE_URL: `http://127.0.0.1:${PORTS.ml}`,
+    // Without Adzuna keys, Job Matches serves 1000 fictional demo listings (clearly labelled in the UI).
+    DEMO_JOBS: optional.ADZUNA_APP_ID && optional.ADZUNA_APP_KEY ? "0" : "1",
     CORS_ORIGINS: `http://localhost:${PORTS.web},http://127.0.0.1:${PORTS.web}`,
   },
 });
@@ -225,5 +227,5 @@ console.log(`
   │  CVPilot is ready:   http://localhost:${PORTS.web}            │
   └─────────────────────────────────────────────────────┘
   Press Ctrl+C here to stop everything. Your data is kept in .local/mongo.
-  ${jobs ? "Adzuna keys found: job search, insights and roadmap are enabled." : "No Adzuna keys: the resume builder, ATS score and Scam Radar work; add ADZUNA_APP_ID / ADZUNA_APP_KEY to a root .env file (then restart) to enable job search, insights and roadmap."}
+  ${jobs ? "Adzuna keys found: job search, insights and roadmap are enabled." : "No Adzuna keys: Job Matches shows fictional demo listings; the resume builder, ATS score and Scam Radar work; add ADZUNA_APP_ID / ADZUNA_APP_KEY to a root .env file (then restart) to enable job search, insights and roadmap."}
 `);

@@ -155,3 +155,45 @@ describe("safeUrl", () => {
     for (const bad of ["javascript:alert(1)", "data:text/html,hi", "ftp://x", "not a url", ""]) expect(safeUrl(bad)).toBe("");
   });
 });
+
+describe("demo job fallback (DEMO_JOBS=1)", () => {
+  let demoApp: ReturnType<typeof createApp>;
+  beforeAll(() => {
+    demoApp = createApp(loadConfig({ NODE_ENV: "test", MONGODB_URI: mongod.getUri(), JWT_SECRET: "t".repeat(40), ML_SERVICE_URL: "http://ml.invalid", ML_SHARED_SECRET: "shh", DEMO_JOBS: "1" }));
+  });
+  async function demoUser() {
+    const agent = request.agent(demoApp);
+    await agent.post("/api/v1/auth/register").send({ email: "demo@example.com", password: "a-long-password" });
+    return agent;
+  }
+
+  it("serves ranked, labelled demo listings when Adzuna is not configured, seeding on first use", async () => {
+    const a = await demoUser();
+    mockMl(() => ({ status: 503, json: { detail: "Adzuna is not configured" } }));
+    expect(await JobListing.countDocuments({ source: "demo" })).toBe(0);
+    const res = await a.post("/api/v1/jobs/search").send({ role: "Data Analyst", k: 5 });
+    expect(res.status).toBe(200);
+    expect(res.body.source).toBe("demo");
+    expect(res.body.results).toHaveLength(5);
+    expect(res.body.results[0].title).toMatch(/Data Analyst/);
+    expect(res.body.results[0].scam.band).toMatch(/safe|caution|high/);
+    expect(await JobListing.countDocuments({ source: "demo" })).toBe(1000);
+    const scores = res.body.results.map((r: { score: number }) => r.score);
+    expect(scores).toEqual([...scores].sort((x: number, y: number) => y - x));
+  });
+
+  it("filters by location and falls back to all cities when nothing matches", async () => {
+    const a = await demoUser();
+    mockMl(() => ({ status: 503, json: { detail: "x" } }));
+    const pune = await a.post("/api/v1/jobs/search").send({ role: "Software Engineer", location: "Pune", k: 10 });
+    expect(pune.body.results.every((r: { location: string }) => r.location.includes("Pune"))).toBe(true);
+    const nowhere = await a.post("/api/v1/jobs/search").send({ role: "Software Engineer", location: "Atlantis", k: 3 });
+    expect(nowhere.body.results).toHaveLength(3);
+  });
+
+  it("does not replace real errors: still 502 on malformed ML output", async () => {
+    const a = await demoUser();
+    mockMl(() => ({ json: { results: "nope" } }));
+    expect((await a.post("/api/v1/jobs/search").send({ role: "Developer" })).status).toBe(502);
+  });
+});

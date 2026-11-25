@@ -12,6 +12,8 @@ const schema = z.object({
   COOKIE_SAMESITE: z.enum(["lax", "strict", "none"]).default("lax"),
   ML_SERVICE_URL: z.string().default("http://localhost:8000"),
   ML_SHARED_SECRET: z.string().default(""),
+  // Dev/demo only: serve fictional listings from the database when Adzuna is not configured.
+  DEMO_JOBS: z.enum(["0", "1"]).default("0"),
 });
 
 export type Config = ReturnType<typeof loadConfig>;
@@ -36,5 +38,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     cookieSameSite: e.COOKIE_SAMESITE,
     mlServiceUrl: e.ML_SERVICE_URL,
     mlSharedSecret: e.ML_SHARED_SECRET,
+    demoJobs: e.NODE_ENV !== "production" && e.DEMO_JOBS === "1",
   };
 }
