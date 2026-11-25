@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import { AuthForm } from "./components/AuthForm";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
+import ResumeStudio from "./pages/ResumeStudio";
 
 export default function App() {
   return (
@@ -10,6 +11,7 @@ export default function App() {
       <Route path="/register" element={<AuthForm mode="register" />} />
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/resume" element={<ResumeStudio />} />
       </Route>
       <Route path="*" element={<p className="p-8">Page not found.</p>} />
     </Routes>

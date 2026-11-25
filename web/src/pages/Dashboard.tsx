@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 
 // Phase 1 placeholder: shows only real account data. Resume, match, market and
@@ -16,6 +17,9 @@ export default function Dashboard() {
       <p className="mt-2 text-slate-600">
         No resumes, matches or insights yet — those features are built in later phases.
       </p>
+      <Link to="/resume" className="mt-6 inline-block rounded bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+        Open Resume Studio (parser + ATS score)
+      </Link>
     </main>
   );
 }
