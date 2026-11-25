@@ -3,6 +3,7 @@ import type { Config } from "../config.js";
 import { AppError } from "../errors.js";
 import { JobListing } from "../models/JobListing.js";
 import { MarketInsight } from "../models/MarketInsight.js";
+import { aggregateDemoMarket } from "./demoSearch.js";
 import { mlPost } from "./mlClient.js";
 import { safeUrl, screeningSchema } from "./jobsSchema.js";
 
@@ -33,7 +34,7 @@ export type InsightView = ReturnType<typeof serializeInsight>;
 export function serializeInsight(i: {
   role: string; location?: string | null; listingCount: number; skills: { skill?: string | null; count?: number | null }[];
   salary?: { count?: number | null; min?: number | null; max?: number | null; mean?: number | null; median?: number | null; p25?: number | null; p75?: number | null; currency?: string | null } | null;
-  salaryPredictedShare?: number | null; updatedAt: Date;
+  salaryPredictedShare?: number | null; updatedAt: Date; source?: string | null;
 }) {
   const n = i.listingCount;
   const hasSalary = i.salary && typeof i.salary.count === "number";
@@ -47,7 +48,7 @@ export function serializeInsight(i: {
     salary: hasSalary ? i.salary : null,
     salaryPredictedShare: i.salaryPredictedShare ?? null,
     updatedAt: i.updatedAt,
-    source: "adzuna",
+    source: i.source ?? "adzuna",
   };
 }
 
@@ -59,9 +60,18 @@ export async function refreshInsight(cfg: Config, roleIn: string, locationIn: st
   const maxAge = opts.maxAgeMs ?? INSIGHT_TTL_MS;
   if (existing && Date.now() - existing.updatedAt.getTime() < maxAge) return { insight: existing, cached: true };
 
-  const parsed = aggregateSchema.safeParse(await mlPost(cfg, "/aggregate", { what: roleIn.trim(), where: locationIn.trim(), pages: 2 }, 120_000));
-  if (!parsed.success) throw new AppError(502, "ml_error", "The market service returned an unexpected response");
-  const a = parsed.data;
+  let a: z.infer<typeof aggregateSchema>;
+  let source = "adzuna";
+  try {
+    const parsed = aggregateSchema.safeParse(await mlPost(cfg, "/aggregate", { what: roleIn.trim(), where: locationIn.trim(), pages: 2 }, 120_000));
+    if (!parsed.success) throw new AppError(502, "ml_error", "The market service returned an unexpected response");
+    a = parsed.data;
+  } catch (e) {
+    // Dev/demo fallback (DEMO_JOBS=1 only): aggregate the fictional demo listings instead of live Adzuna data.
+    if (!(cfg.demoJobs && e instanceof AppError && (e.code === "feature_unavailable" || e.code === "ml_unavailable"))) throw e;
+    a = await aggregateDemoMarket(roleIn, locationIn);
+    source = "demo";
+  }
   if (a.n === 0) throw new AppError(404, "no_listings", "No listings were found for that role and location. Try a broader role or remove the location.");
 
   const now = new Date();
@@ -73,12 +83,13 @@ export async function refreshInsight(cfg: Config, roleIn: string, locationIn: st
         skills: Object.entries(a.skill_counts).map(([skill, count]) => ({ skill, count })),
         salary: a.salary ?? undefined,
         salaryPredictedShare: a.salary_predicted_share ?? undefined,
+        source,
         updatedAt: now,
       },
     },
     { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
   );
-  await JobListing.bulkWrite(
+  if (a.listings.length) await JobListing.bulkWrite(
     a.listings.map((l) => ({
       updateOne: {
         filter: { source: "adzuna", sourceId: l.source_id },

@@ -197,3 +197,24 @@ describe("demo job fallback (DEMO_JOBS=1)", () => {
     expect((await a.post("/api/v1/jobs/search").send({ role: "Developer" })).status).toBe(502);
   });
 });
+
+describe("demo market insights (DEMO_JOBS=1)", () => {
+  it("computes skill demand and salary stats from demo listings and labels the source", async () => {
+    const demoApp = createApp(loadConfig({ NODE_ENV: "test", MONGODB_URI: mongod.getUri(), JWT_SECRET: "t".repeat(40), ML_SERVICE_URL: "http://ml.invalid", ML_SHARED_SECRET: "shh", DEMO_JOBS: "1" }));
+    const a = request.agent(demoApp);
+    await a.post("/api/v1/auth/register").send({ email: "ins@example.com", password: "a-long-password" });
+    mockMl(() => ({ status: 503, json: { detail: "Market insights are unavailable: Adzuna is not configured" } }));
+    const res = await a.post("/api/v1/insights/refresh").send({ role: "Data Analyst", location: "" });
+    expect(res.status).toBe(200);
+    const i = res.body.insight;
+    expect(i.source).toBe("demo");
+    expect(i.listingCount).toBeGreaterThan(20);
+    expect(i.skills[0].demand).toBeGreaterThan(0);
+    expect(i.skills.map((s: { skill: string }) => s.skill)).toContain("SQL");
+    expect(i.salary.currency).toBe("INR");
+    expect(i.salary.p25).toBeLessThanOrEqual(i.salary.median);
+    expect(i.salary.median).toBeLessThanOrEqual(i.salary.p75);
+    const none = await a.post("/api/v1/insights/refresh").send({ role: "Astronaut", location: "" });
+    expect(none.status).toBe(404);
+  });
+});

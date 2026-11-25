@@ -49,6 +49,7 @@ export default function MarketInsights() {
           <Button type="submit" disabled={busy || role.trim().length < 2}>{busy ? "Fetching…" : "Get insights"}</Button>
         </form>
         <p className="mt-3 text-xs text-slate-500">Data comes from Adzuna and is cached for a few minutes per role and location.</p>
+        {data?.source === "demo" && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">Demo mode: these figures are computed from fictional sample listings (no Adzuna keys configured), not the real market.</p>}
       </Card>
 
       {busy && <div className="mt-6 space-y-3"><Skeleton className="h-24" /><Skeleton className="h-72" /></div>}

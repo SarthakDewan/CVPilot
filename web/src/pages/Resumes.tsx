@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { PlusIcon, TrashIcon } from "../components/icons";
 import { ACCENTS, ResumePreview, ScaledPage } from "../components/ResumePreview";
@@ -7,6 +7,9 @@ import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useToast } from "../lib/toast";
 import { timeAgo } from "../lib/time";
+import { fileToText } from "../lib/resume/extract";
+import { parseResume } from "../lib/resume/parser";
+import { parsedToContent } from "../lib/resume/toContent";
 import { emptyContent, type ResumeContent, type ResumeFull, type ResumeSummary, type TemplateId, type TemplateInfo } from "../lib/types";
 
 export function ResumesPage() {
@@ -84,6 +87,22 @@ export function NewResumePage() {
   const [title, setTitle] = useState("My resume");
   const [tpl, setTpl] = useState<TemplateId>("modern");
   const [busy, setBusy] = useState(false);
+  const [imported, setImported] = useState<{ content: ResumeContent; file: string } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function onFile(e: ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    try {
+      const text = await fileToText(f);
+      if (text.trim().length < 40) return toast("Could not read text from that file (scanned PDF?). Try a text-based PDF or DOCX.", "error");
+      const content = parsedToContent(parseResume(text));
+      setImported({ content, file: f.name });
+      if (content.basics.fullName) setTitle(`${content.basics.fullName} – resume`);
+      toast(`Imported ${f.name}: review and edit everything in the next step`);
+    } catch { toast("Could not read that file", "error"); }
+  }
 
   useEffect(() => { api<{ templates: TemplateInfo[] }>("/resumes/templates").then((r) => setTemplates(r.templates)).catch(() => {}); }, []);
 
@@ -91,8 +110,8 @@ export function NewResumePage() {
     e.preventDefault();
     setBusy(true);
     try {
-      const content = emptyContent();
-      content.basics.email = user?.email ?? "";
+      const base = imported?.content ?? emptyContent();
+      const content: ResumeContent = { ...base, basics: { ...base.basics, email: base.basics.email || (user?.email ?? "") } };
       const r = await api<{ resume: ResumeFull }>("/resumes", { method: "POST", body: { title, templateId: tpl, content } });
       nav(`/resumes/${r.resume.id}`, { replace: true });
     } catch (err) {
@@ -106,6 +125,20 @@ export function NewResumePage() {
       <h1 className="text-2xl font-extrabold">New resume</h1>
       <form onSubmit={create} className="mt-5 space-y-6">
         <div className="max-w-md"><Field label="Resume name" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={120} hint="Only you see this name." /></div>
+        <Card className="max-w-2xl p-4">
+          <p className="font-semibold">Import from a file <span className="font-normal text-slate-500">(optional)</span></p>
+          <p className="mt-1 text-sm text-slate-600">Upload a PDF, DOCX or TXT resume and we fill in every section for you. It is read in your browser; you can edit everything afterwards.</p>
+          <input ref={fileRef} type="file" accept=".pdf,.docx,.txt" hidden onChange={(e) => void onFile(e)} aria-label="Import resume file" />
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button type="button" onClick={() => fileRef.current?.click()}>{imported ? "Choose a different file" : "Upload PDF / DOCX"}</Button>
+            {imported && (
+              <p className="text-sm text-emerald-700" role="status">
+                ✓ {imported.file}: {imported.content.experience.length} job(s), {imported.content.education.length} education, {imported.content.skills.length} skills
+                <button type="button" onClick={() => setImported(null)} className="ml-2 text-slate-500 underline">clear</button>
+              </p>
+            )}
+          </div>
+        </Card>
         <fieldset>
           <legend className="text-sm font-medium text-slate-700">Choose a template</legend>
           <div className="mt-2 grid gap-4 sm:grid-cols-3">
@@ -119,7 +152,7 @@ export function NewResumePage() {
             ))}
           </div>
         </fieldset>
-        <Button type="submit" disabled={busy || !title.trim()}>{busy ? "Creating…" : "Create and start editing"}</Button>
+        <Button type="submit" disabled={busy || !title.trim()}>{busy ? "Creating…" : imported ? "Create from imported file" : "Create and start editing"}</Button>
       </form>
     </div>
   );

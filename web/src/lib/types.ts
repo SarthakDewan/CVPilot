@@ -114,6 +114,7 @@ export interface Insight {
   salary: { count: number; min: number; max: number; mean: number; median: number; p25: number; p75: number; currency: string } | null;
   salaryPredictedShare: number | null;
   updatedAt: string;
+  source?: string;
 }
 
 export type MilestoneStatus = "not_started" | "in_progress" | "completed";
