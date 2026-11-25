@@ -82,10 +82,21 @@ const optional = { ...rootEnv };
 for (const k of ["ADZUNA_APP_ID", "ADZUNA_APP_KEY", "ADZUNA_COUNTRY", "GEMINI_API_KEY", "GEMINI_MODEL"]) if (process.env[k]) optional[k] = process.env[k];
 
 // ---------- dependencies
+// Reinstall on the first run AND whenever package.json / package-lock.json changed since the last install
+// (e.g. after `git pull` added a dependency), tracked with a hash stored inside node_modules.
 for (const dir of ["gateway", "web"]) {
-  if (!existsSync(path.join(ROOT, dir, "node_modules"))) {
-    say(`Installing JavaScript dependencies for ${dir} (first run only)`);
+  const nm = path.join(ROOT, dir, "node_modules");
+  const hasher = createHash("sha256");
+  for (const f of ["package.json", "package-lock.json"]) {
+    const fp = path.join(ROOT, dir, f);
+    if (existsSync(fp)) hasher.update(readFileSync(fp));
+  }
+  const depsHash = hasher.digest("hex");
+  const depsMarker = path.join(nm, ".cvpilot-deps-hash");
+  if (!existsSync(nm) || !existsSync(depsMarker) || readFileSync(depsMarker, "utf8").trim() !== depsHash) {
+    say(`Installing JavaScript dependencies for ${dir} (first run, or dependencies changed)`);
     run("npm", ["install"], { cwd: path.join(ROOT, dir) });
+    writeFileSync(depsMarker, depsHash);
   }
 }
 
