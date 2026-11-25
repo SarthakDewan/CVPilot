@@ -8,6 +8,7 @@ import { parseBody } from "../middleware/validate.js";
 import { JobListing } from "../models/JobListing.js";
 import { Resume } from "../models/Resume.js";
 import { User } from "../models/User.js";
+import { searchDemoJobs } from "../services/demoSearch.js";
 import { mlPost } from "../services/mlClient.js";
 import { mlRankSchema, safeUrl, screenSchema, screeningSchema, searchSchema } from "../services/jobsSchema.js";
 import { resumeContentSchema, resumeToText } from "../services/resumeSchema.js";
@@ -43,14 +44,25 @@ export function jobsRouter(cfg: Config): Router {
       .filter(Boolean)
       .join("\n");
 
-    const ml = mlRankSchema.safeParse(
-      await mlPost(
+    const mlCall = () =>
+      mlPost(
         cfg,
         "/rank",
         { profile_text: profileText, profile_skills: skills, what: body.role, where: body.location, k: body.k, fetch: Math.min(50, Math.max(30, body.k * 2)) },
         90_000,
-      ),
-    );
+      );
+    let raw: unknown;
+    try {
+      raw = await mlCall();
+    } catch (e) {
+      // Dev/demo fallback (DEMO_JOBS=1 only): when live search is not configured or unreachable, serve fictional listings.
+      if (cfg.demoJobs && e instanceof AppError && (e.code === "feature_unavailable" || e.code === "ml_unavailable")) {
+        res.json(await searchDemoJobs({ role: body.role, location: body.location, skills, k: body.k }));
+        return;
+      }
+      throw e;
+    }
+    const ml = mlRankSchema.safeParse(raw);
     if (!ml.success) throw new AppError(502, "ml_error", "The job service returned an unexpected response");
 
     const now = new Date();

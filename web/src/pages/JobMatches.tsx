@@ -22,7 +22,7 @@ export default function JobMatches() {
   const [k, setK] = useState(10);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<{ results: JobResult[]; mode: "hybrid" | "rule-only"; fetched: number } | null>(null);
+  const [data, setData] = useState<{ results: JobResult[]; mode: "hybrid" | "rule-only"; fetched: number; source?: string } | null>(null);
 
   useEffect(() => {
     api<{ resumes: ResumeSummary[] }>("/resumes").then((r) => { setResumes(r.resumes); setResumeId(r.resumes[0]?.id ?? ""); }).catch(() => setResumes([]));
@@ -75,6 +75,7 @@ export default function JobMatches() {
 
       {data && !busy && (
         <section className="mt-6 space-y-4" aria-label="Results">
+          {data.source === "demo" && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">Demo mode: these are fictional sample listings (no Adzuna keys configured), not real jobs.</p>}
           <ModeNote mode={data.mode} />
           <p className="text-sm text-slate-600">Showing the top {data.results.length} of {data.fetched} listings fetched.</p>
           {data.results.length === 0 && <Card className="p-6 text-center text-slate-600">No listings found. Try a broader role or remove the location.</Card>}
