@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "seed": "tsx src/seed.ts"
+    "seed": "tsx src/seed.ts",
+    "seed:jobs": "tsx src/seedJobs.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
