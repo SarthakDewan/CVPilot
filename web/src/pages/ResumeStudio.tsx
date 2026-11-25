@@ -1,5 +1,4 @@
 import { useMemo, useRef, useState, type ChangeEvent } from "react";
-import { Link } from "react-router-dom";
 import { scoreResume } from "../lib/resume/ats";
 import { DEMO_JDS, DEMO_RESUMES } from "../lib/resume/demo";
 import { fileToText } from "../lib/resume/extract";
@@ -110,13 +109,10 @@ export default function ResumeStudio() {
   const delta = report ? report.total - baseline : 0;
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Resume Studio</h1>
-          <p className="text-sm text-slate-600">Parse a resume, edit the extracted data and check its ATS score.</p>
-        </div>
-        <Link to="/" className={btn}>← Dashboard</Link>
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-8">
+      <header>
+        <h1 className="text-2xl font-bold">Resume Studio</h1>
+        <p className="text-sm text-slate-600">Parse a resume, edit the extracted data and check its ATS score.</p>
       </header>
 
       <section className="mt-6 rounded-lg border border-slate-200 bg-white p-4">
@@ -300,6 +296,6 @@ export default function ResumeStudio() {
           </aside>
         </div>
       )}
-    </main>
+    </div>
   );
 }

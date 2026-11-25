@@ -15,6 +15,11 @@ const resumeSchema = new Schema(
       missingKeywords: { type: [String], default: undefined },
       explanation: { type: String },
       explanationSource: { type: String, enum: ["gemini", "template"] },
+      cosine: { type: Number },
+      model: { type: String },
+      truncatedResume: { type: Boolean },
+      truncatedJob: { type: Boolean },
+      jobDescriptionHash: { type: String },
       analyzedAt: { type: Date },
     },
     share: {

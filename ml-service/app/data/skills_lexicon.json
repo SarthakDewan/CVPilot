@@ -1,0 +1,544 @@
+{
+ "_comment": "Skill lexicon: canonical name -> explicit lowercase aliases (the name itself is NOT added automatically). Matching uses lemmatized token sequences; single-word aliases of skills listed in case_sensitive only count when written capitalised (so the verb 'excel' or the noun 'spring' do not match).",
+ "skills": {
+  "Python": [
+   "python",
+   "py"
+  ],
+  "JavaScript": [
+   "javascript",
+   "js",
+   "ecmascript"
+  ],
+  "TypeScript": [
+   "typescript",
+   "ts"
+  ],
+  "Java": [
+   "java"
+  ],
+  "C++": [
+   "c++"
+  ],
+  "C#": [
+   "c#"
+  ],
+  "Go": [
+   "golang"
+  ],
+  "Rust": [
+   "rust"
+  ],
+  "Kotlin": [
+   "kotlin"
+  ],
+  "Swift": [
+   "swift"
+  ],
+  "PHP": [
+   "php"
+  ],
+  "Ruby": [
+   "ruby"
+  ],
+  "Scala": [
+   "scala"
+  ],
+  "R": [
+   "r programming",
+   "rstudio"
+  ],
+  "SQL": [
+   "sql"
+  ],
+  "NoSQL": [
+   "nosql"
+  ],
+  "Bash": [
+   "bash",
+   "shell scripting"
+  ],
+  "MATLAB": [
+   "matlab"
+  ],
+  "HTML": [
+   "html",
+   "html5"
+  ],
+  "CSS": [
+   "css",
+   "css3"
+  ],
+  "SAS": [
+   "sas"
+  ],
+  "React": [
+   "react",
+   "reactjs"
+  ],
+  "Angular": [
+   "angular",
+   "angularjs"
+  ],
+  "Vue": [
+   "vue",
+   "vuejs"
+  ],
+  "Next.js": [
+   "nextjs"
+  ],
+  "Node.js": [
+   "nodejs"
+  ],
+  "Express": [
+   "expressjs"
+  ],
+  "Django": [
+   "django"
+  ],
+  "Flask": [
+   "flask"
+  ],
+  "FastAPI": [
+   "fastapi"
+  ],
+  "Spring": [
+   "spring boot",
+   "springboot",
+   "spring framework",
+   "spring"
+  ],
+  ".NET": [
+   ".net",
+   "dotnet",
+   "asp.net"
+  ],
+  "Rails": [
+   "rails",
+   "ruby on rails"
+  ],
+  "Redux": [
+   "redux"
+  ],
+  "Tailwind": [
+   "tailwind",
+   "tailwindcss"
+  ],
+  "GraphQL": [
+   "graphql"
+  ],
+  "REST APIs": [
+   "rest",
+   "restful",
+   "rest api",
+   "rest apis"
+  ],
+  "Microservices": [
+   "microservice",
+   "microservices"
+  ],
+  "WebSockets": [
+   "websocket",
+   "websockets"
+  ],
+  "Machine Learning": [
+   "machine learning",
+   "ml"
+  ],
+  "Deep Learning": [
+   "deep learning"
+  ],
+  "NLP": [
+   "nlp",
+   "natural language processing"
+  ],
+  "Computer Vision": [
+   "computer vision"
+  ],
+  "TensorFlow": [
+   "tensorflow"
+  ],
+  "PyTorch": [
+   "pytorch"
+  ],
+  "scikit-learn": [
+   "scikit learn",
+   "sklearn",
+   "scikitlearn"
+  ],
+  "Pandas": [
+   "pandas"
+  ],
+  "NumPy": [
+   "numpy"
+  ],
+  "Statistics": [
+   "statistics",
+   "statistical analysis",
+   "statistical"
+  ],
+  "Data Analysis": [
+   "data analysis",
+   "data analytics",
+   "analytics"
+  ],
+  "Data Visualization": [
+   "data visualization",
+   "data visualisation"
+  ],
+  "Tableau": [
+   "tableau"
+  ],
+  "Power BI": [
+   "power bi",
+   "powerbi"
+  ],
+  "Excel": [
+   "excel",
+   "ms excel",
+   "microsoft excel",
+   "advanced excel"
+  ],
+  "Spark": [
+   "spark",
+   "pyspark",
+   "apache spark"
+  ],
+  "Hadoop": [
+   "hadoop"
+  ],
+  "Kafka": [
+   "kafka"
+  ],
+  "Airflow": [
+   "airflow"
+  ],
+  "ETL": [
+   "etl",
+   "elt"
+  ],
+  "Data Engineering": [
+   "data engineering",
+   "data pipeline",
+   "data pipelines"
+  ],
+  "Data Modeling": [
+   "data modeling",
+   "data modelling"
+  ],
+  "Looker": [
+   "looker"
+  ],
+  "dbt": [
+   "dbt"
+  ],
+  "A/B Testing": [
+   "ab testing",
+   "a b testing",
+   "experimentation"
+  ],
+  "LLMs": [
+   "llm",
+   "llms",
+   "large language model",
+   "large language models"
+  ],
+  "Generative AI": [
+   "generative ai",
+   "genai"
+  ],
+  "AWS": [
+   "aws",
+   "amazon web services"
+  ],
+  "Azure": [
+   "azure"
+  ],
+  "GCP": [
+   "gcp",
+   "google cloud"
+  ],
+  "Docker": [
+   "docker"
+  ],
+  "Kubernetes": [
+   "kubernetes",
+   "k8s"
+  ],
+  "Terraform": [
+   "terraform"
+  ],
+  "Ansible": [
+   "ansible"
+  ],
+  "CI/CD": [
+   "cicd",
+   "continuous integration",
+   "continuous delivery",
+   "continuous deployment"
+  ],
+  "Jenkins": [
+   "jenkins"
+  ],
+  "GitHub Actions": [
+   "github actions"
+  ],
+  "Linux": [
+   "linux",
+   "unix"
+  ],
+  "Git": [
+   "git",
+   "github",
+   "gitlab"
+  ],
+  "Monitoring": [
+   "prometheus",
+   "grafana",
+   "observability"
+  ],
+  "Serverless": [
+   "serverless",
+   "lambda"
+  ],
+  "Networking": [
+   "networking",
+   "tcp ip"
+  ],
+  "Cybersecurity": [
+   "cybersecurity",
+   "cyber security",
+   "infosec",
+   "information security"
+  ],
+  "PostgreSQL": [
+   "postgresql",
+   "postgres"
+  ],
+  "MySQL": [
+   "mysql"
+  ],
+  "MongoDB": [
+   "mongodb",
+   "mongo"
+  ],
+  "Redis": [
+   "redis"
+  ],
+  "Elasticsearch": [
+   "elasticsearch",
+   "elastic search"
+  ],
+  "Oracle": [
+   "oracle"
+  ],
+  "Snowflake": [
+   "snowflake"
+  ],
+  "BigQuery": [
+   "bigquery"
+  ],
+  "Android": [
+   "android"
+  ],
+  "iOS": [
+   "ios"
+  ],
+  "Flutter": [
+   "flutter"
+  ],
+  "React Native": [
+   "react native"
+  ],
+  "Testing": [
+   "unit testing",
+   "automated testing",
+   "test automation",
+   "qa",
+   "quality assurance"
+  ],
+  "Selenium": [
+   "selenium"
+  ],
+  "Pytest": [
+   "pytest"
+  ],
+  "Jest": [
+   "jest"
+  ],
+  "Agile": [
+   "agile"
+  ],
+  "Scrum": [
+   "scrum"
+  ],
+  "Jira": [
+   "jira"
+  ],
+  "System Design": [
+   "system design",
+   "distributed systems"
+  ],
+  "Data Structures": [
+   "data structures",
+   "algorithms"
+  ],
+  "OOP": [
+   "oop",
+   "object oriented"
+  ],
+  "Design Patterns": [
+   "design patterns"
+  ],
+  "Figma": [
+   "figma"
+  ],
+  "UI Design": [
+   "ui design",
+   "ui",
+   "user interface"
+  ],
+  "UX Design": [
+   "ux design",
+   "ux",
+   "user experience"
+  ],
+  "Prototyping": [
+   "prototyping",
+   "wireframing"
+  ],
+  "Photoshop": [
+   "photoshop"
+  ],
+  "Product Management": [
+   "product management",
+   "product manager"
+  ],
+  "Roadmapping": [
+   "roadmapping",
+   "product roadmap"
+  ],
+  "User Research": [
+   "user research"
+  ],
+  "Project Management": [
+   "project management",
+   "pmp"
+  ],
+  "Stakeholder Management": [
+   "stakeholder management",
+   "stakeholders"
+  ],
+  "Communication": [
+   "communication",
+   "communication skills"
+  ],
+  "Leadership": [
+   "leadership"
+  ],
+  "Problem Solving": [
+   "problem solving"
+  ],
+  "Teamwork": [
+   "teamwork",
+   "collaboration"
+  ],
+  "Presentation": [
+   "presentation",
+   "presentation skills"
+  ],
+  "Negotiation": [
+   "negotiation"
+  ],
+  "Time Management": [
+   "time management"
+  ],
+  "Sales": [
+   "sales"
+  ],
+  "CRM": [
+   "crm",
+   "salesforce"
+  ],
+  "Marketing": [
+   "marketing",
+   "digital marketing"
+  ],
+  "SEO": [
+   "seo"
+  ],
+  "Content Writing": [
+   "content writing",
+   "copywriting"
+  ],
+  "Google Analytics": [
+   "google analytics"
+  ],
+  "Financial Analysis": [
+   "financial analysis",
+   "financial modeling",
+   "financial modelling"
+  ],
+  "Accounting": [
+   "accounting",
+   "bookkeeping"
+  ],
+  "Tally": [
+   "tally"
+  ],
+  "Auditing": [
+   "audit",
+   "auditing"
+  ],
+  "Budgeting": [
+   "budgeting",
+   "forecasting"
+  ],
+  "Customer Service": [
+   "customer service",
+   "customer support"
+  ],
+  "Operations": [
+   "operations management"
+  ],
+  "Supply Chain": [
+   "supply chain",
+   "logistics"
+  ],
+  "Recruitment": [
+   "recruitment",
+   "talent acquisition"
+  ],
+  "HR": [
+   "human resources"
+  ],
+  "SAP": [
+   "sap"
+  ],
+  "ERP": [
+   "erp"
+  ],
+  "Risk Management": [
+   "risk management"
+  ],
+  "Compliance": [
+   "compliance"
+  ],
+  "Business Analysis": [
+   "business analysis",
+   "business analyst",
+   "requirements gathering"
+  ]
+ },
+ "case_sensitive": [
+  "Excel",
+  "Swift",
+  "Rust",
+  "Oracle",
+  "Spring",
+  "Express",
+  "Ruby",
+  "Sales",
+  "Operations"
+ ]
+}

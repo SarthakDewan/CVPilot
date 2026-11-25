@@ -52,6 +52,7 @@ describe("auth UI", () => {
     mockFetch((url) => {
       if (url.endsWith("/auth/me")) return { status: 401, body: { error: { code: "unauthorized", message: "x" } } };
       if (url.endsWith("/auth/register")) return { status: 201, body: { user: { id: "1", email: "a@b.co" } } };
+      if (url.endsWith("/resumes")) return { status: 200, body: { resumes: [] } };
       return { status: 404 };
     });
     renderAt("/register");
@@ -59,15 +60,15 @@ describe("auth UI", () => {
     await user.type(await screen.findByLabelText("Email"), "a@b.co");
     await user.type(screen.getByLabelText("Password"), "a-long-password");
     await user.click(screen.getByRole("button", { name: "Create account" }));
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument());
-    expect(screen.getByText("a@b.co")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("heading", { name: /Hi, a/ })).toBeInTheDocument());
+    expect(await screen.findByText(/no resumes yet/i)).toBeInTheDocument();
   });
 });
 
 describe("Resume Studio", () => {
   it("parses a demo resume, shows an ATS score and updates it live after an edit", async () => {
     mockFetch((url) => (url.endsWith("/auth/me") ? { status: 200, body: { user: { id: "1", email: "a@b.co" } } } : { status: 404 }));
-    renderAt("/resume");
+    renderAt("/resume-studio");
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: /Demo: Jordan Ellis/ }));
     const score = await screen.findByLabelText("ATS score");

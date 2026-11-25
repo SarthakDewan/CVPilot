@@ -1,0 +1,56 @@
+{
+  "_comment": "Data-driven scam indicators. Add a rule here and it is picked up automatically; rho = fired / number of rules. type 'regex' uses 'patterns' (case-insensitive, skipped when negated nearby, e.g. 'no registration fee'); type 'email_domain' fires on any email whose domain matches 'domains' (fnmatch wildcards).",
+  "negation_pattern": "\\b(no|not|zero|without|never|nor|free of|doesn't|don't|does not|do not|isn't|is not)\\b",
+  "negation_window": 25,
+  "rules": [
+    {
+      "id": "h1",
+      "name": "Upfront fee or deposit",
+      "reason": "Asks you to pay a fee, registration charge or security deposit; legitimate employers do not charge candidates.",
+      "type": "regex",
+      "patterns": [
+        "\\b(registration|security|training|processing|joining|application|verification|kit|refundable|admission)\\s+(fee|fees|deposit|charge|charges|amount)\\b",
+        "\\bsecurity\\s+deposit\\b",
+        "\\b(pay|deposit|send|transfer|remit)\\b[^.\\n]{0,40}\\b(fee|fees|deposit|charges)\\b",
+        "\\bupfront\\s+(fee|payment|cost)\\b"
+      ]
+    },
+    {
+      "id": "h2",
+      "name": "Bank details, OTP or wire transfer",
+      "reason": "Asks for bank details, an OTP, card information or a wire transfer, which are common in payment and identity scams.",
+      "type": "regex",
+      "patterns": [
+        "\\bbank\\s+(account|details|statement|login|password)\\b",
+        "\\b(otp|one[- ]time\\s+(password|pin|code))\\b",
+        "\\bwire\\s+transfer\\b",
+        "\\bwestern\\s+union\\b",
+        "\\b(credit|debit|atm)\\s+card\\s+(number|details|pin)\\b",
+        "\\b(cvv|upi\\s+pin|net\\s*banking)\\b"
+      ]
+    },
+    {
+      "id": "h3",
+      "name": "Guaranteed hiring or income",
+      "reason": "Promises guaranteed hiring, placement or income, or says there is no interview, which real employers cannot guarantee.",
+      "type": "regex",
+      "patterns": [
+        "\\bguaranteed\\s+(job|placement|income|salary|hiring|selection|earnings?|returns?)\\b",
+        "\\b(100%|assured)\\s+(job\\s+)?(guarantee|placement|selection|job)\\b",
+        "\\bno\\s+interview\\b",
+        "\\bwithout\\s+(an?\\s+)?interview\\b",
+        "\\b(instant|immediate)\\s+(joining|hiring|selection|offer)\\b"
+      ]
+    },
+    {
+      "id": "h4",
+      "name": "Personal email domain",
+      "reason": "Contact is a personal email address (for example Gmail or Yahoo) rather than a company domain.",
+      "type": "email_domain",
+      "domains": [
+        "gmail.com", "googlemail.com", "yahoo.*", "ymail.com", "hotmail.*", "outlook.*", "live.*", "msn.com",
+        "rediffmail.com", "aol.com", "icloud.com", "me.com", "proton.me", "protonmail.com", "mail.com", "gmx.*", "zoho.com"
+      ]
+    }
+  ]
+}

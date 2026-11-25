@@ -2,10 +2,11 @@ import { Schema, model, type InferSchemaType } from "mongoose";
 
 const marketInsightSchema = new Schema({
   role: { type: String, required: true, lowercase: true, trim: true },
-  location: { type: String, required: true, lowercase: true, trim: true },
+  location: { type: String, default: "", lowercase: true, trim: true },
   listingCount: { type: Number, required: true, min: 0 },
-  // skill -> number of listings containing it (demand d(s) = count / listingCount)
-  skillCounts: { type: Map, of: Number, default: {} },
+  // An array (not a Map) because skill names such as "Node.js" or ".NET" contain dots, which Mongo map keys forbid.
+  // demand d(s) = count / listingCount
+  skills: { type: [new Schema({ skill: String, count: Number }, { _id: false })], default: [] },
   salary: {
     count: Number,
     min: Number,
@@ -14,8 +15,10 @@ const marketInsightSchema = new Schema({
     median: Number,
     p25: Number,
     p75: Number,
-    currency: { type: String, default: "INR" },
+    currency: String,
   },
+  salaryPredictedShare: { type: Number },
+  source: { type: String, default: "adzuna" },
   updatedAt: { type: Date, required: true, default: () => new Date() },
 });
 

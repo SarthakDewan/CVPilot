@@ -25,5 +25,5 @@ export class AppError extends Error {
 
 /** Shape of every error response body: { error: { code, message, details? } } */
 export interface ErrorBody {
-  error: { code: string; message: string; details?: unknown };
+  error: { code: string; message: string; details?: unknown; requestId?: string };
 }
